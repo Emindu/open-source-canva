@@ -95,6 +95,26 @@ const Workspace: React.FC = () => {
       const mod = e.ctrlKey || e.metaKey;
       const store = useEditorStore.getState();
 
+      // Crop mode is modal: only commit, cancel and nudge apply. Everything
+      // else (undo, delete, duplicate…) would corrupt the temporary crop
+      // state, so swallow it.
+      if (store.cropModeActive) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          store.applyCrop();
+        } else if (e.key === 'Escape') {
+          store.cancelCrop();
+        } else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key) && active) {
+          e.preventDefault();
+          const step = e.shiftKey ? 10 : 1;
+          store.nudge(
+            e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0,
+            e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0
+          );
+        }
+        return;
+      }
+
       if (mod && e.key.toLowerCase() === 'z' && !e.shiftKey) {
         e.preventDefault();
         store.undo();
@@ -118,15 +138,8 @@ const Workspace: React.FC = () => {
       } else if (mod && e.shiftKey && e.key.toLowerCase() === 'g') {
         e.preventDefault();
         store.ungroup();
-      } else if (e.key === 'Enter' && store.cropModeActive) {
-        // Enter commits the crop (only meaningful in crop mode).
-        e.preventDefault();
-        store.applyCrop();
       } else if (e.key === 'Escape') {
-        // Ordering matters: crop mode > table edit > general selection.
-        if (store.cropModeActive) {
-          store.cancelCrop();
-        } else if (store.tableEditingGroup) {
+        if (store.tableEditingGroup) {
           store.exitTableEditMode();
         } else {
           store.discardSelection();

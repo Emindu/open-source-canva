@@ -259,6 +259,21 @@ const addRegularPolygon = (canvas: fabric.Canvas | null, sides: number, color: s
   canvas.requestRenderAll();
 };
 
+/**
+ * Full source dimensions of a Fabric image. After Fabric filters run,
+ * `_element` is a canvas (which has no naturalWidth), and after a crop
+ * `width`/`height` are the cropped size — so prefer the original source
+ * element and fall back progressively.
+ */
+const getImageSourceSize = (img: any): { width: number; height: number } => {
+  const orig = img._originalElement;
+  const el = img._element || (typeof img.getElement === 'function' ? img.getElement() : undefined);
+  return {
+    width: orig?.naturalWidth || orig?.width || el?.naturalWidth || el?.width || img.width || 100,
+    height: orig?.naturalHeight || orig?.height || el?.naturalHeight || el?.height || img.height || 100,
+  };
+};
+
 /* -------------------- History & clipboard (module scope) -------------------- */
 let historyStack: string[] = [];
 let historyIndex = -1;
@@ -1141,7 +1156,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   /* ---------- Deletion / cloning ---------- */
   deleteSelected: () => {
     const canvas = get().canvas;
-    if (!canvas) return;
+    // Crop mode is modal: the active object is the crop rect, deleting it
+    // would strand the image in its temporary un-cropped state.
+    if (!canvas || get().cropModeActive) return;
     const targets = canvas.getActiveObjects();
     if (!targets.length) return;
     targets.forEach((o) => canvas.remove(o));
@@ -1152,7 +1169,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   duplicateSelected: async () => {
     const canvas = get().canvas;
     const active = canvas?.getActiveObject();
-    if (!canvas || !active) return;
+    if (!canvas || !active || get().cropModeActive) return;
     const cloned = await active.clone();
     cloned.set({ left: (active.left ?? 0) + 20, top: (active.top ?? 0) + 20 });
     applyCornerStyle(cloned);
@@ -1169,12 +1186,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   copySelected: async () => {
     const canvas = get().canvas;
     const active = canvas?.getActiveObject();
-    if (!active) return;
+    if (!active || get().cropModeActive) return;
     clipboard = await active.clone();
   },
   paste: async () => {
     const canvas = get().canvas;
-    if (!canvas || !clipboard) return;
+    if (!canvas || !clipboard || get().cropModeActive) return;
     const cloned = await clipboard.clone();
     cloned.set({ left: (clipboard.left ?? 0) + 20, top: (clipboard.top ?? 0) + 20 });
     applyCornerStyle(cloned);
@@ -1468,20 +1485,32 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   /* ---------- PowerPoint-style crop ------------------------------
    * On enter:
-   *   1) Snapshot the image's current state (for cancel/undo).
+   *   1) Snapshot the image's current state (for cancel).
    *   2) "Un-crop" the image so the full source is visible, positioned so the
    *      currently-visible cropped area stays exactly where it was on canvas.
-   *   3) Overlay 4 dim rects (top/right/bottom/left) around a draggable +
-   *      resizable crop rectangle sitting at the currently-cropped area.
+   *   3) Overlay a full-canvas dim rect whose inverted clipPath "hole" tracks
+   *      a draggable + resizable crop rectangle sitting at the currently
+   *      visible area.
    *   4) Lock the image scale/rotation but allow drag — user can reposition
    *      the image "under" the crop (classic PPT behavior).
-   * The crop rect's moving/scaling events keep the 4 dim rects synced live.
+   * All geometry goes through the image's transform matrix so rotated and
+   * flipped images crop correctly, and the crop rect math always uses its
+   * stroke-free path (center + width×scale) so the 2px dashed stroke never
+   * leaks into the cropped result. History and autosave are suspended while
+   * crop mode is active so the temporary overlay objects can never end up in
+   * undo snapshots or saved projects.
    * ---------------------------------------------------------------- */
   startCropMode: () => {
     const canvas = get().canvas;
     if (!canvas) return;
     const img = canvas.getActiveObject() as any;
     if (!img || img.type !== 'image') return;
+
+    // Flag first: saveHistory is suspended while cropping, and the
+    // object:added/removed events fired below must not be recorded — a
+    // snapshot taken mid-crop would bake the overlays and the temporarily
+    // un-cropped image into history.
+    set({ cropModeActive: true });
 
     // Wipe any stale overlays from a previous session.
     canvas.getObjects().forEach((o) => {
@@ -1490,7 +1519,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       }
     });
 
-    // Snapshot original state so cancel/undo can restore.
+    // Snapshot original state so cancel can restore.
     const snapshot = {
       cropX: img.cropX ?? 0,
       cropY: img.cropY ?? 0,
@@ -1508,25 +1537,29 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     };
     (img as any).__cropSnapshot = snapshot;
 
-    const el: HTMLImageElement | undefined = img._element || (typeof img.getElement === 'function' ? img.getElement() : undefined);
-    const naturalW = el?.naturalWidth || img.width || 100;
-    const naturalH = el?.naturalHeight || img.height || 100;
+    const { width: naturalW, height: naturalH } = getImageSourceSize(img);
 
-    // Visual coords + size of the currently cropped area on canvas.
-    const visLeft = snapshot.left;
-    const visTop = snapshot.top;
-    const visW = img.getScaledWidth();
-    const visH = img.getScaledHeight();
+    // Center + size (canvas px) of the currently visible cropped area.
+    const visCenter = img.getCenterPoint();
+    const visW = (snapshot.width ?? naturalW) * snapshot.scaleX;
+    const visH = (snapshot.height ?? naturalH) * snapshot.scaleY;
 
-    // "Un-crop": show the full source. Keep the current visible area at the
-    // same on-canvas position by shifting the image top-left by the crop offset.
+    // "Un-crop": show the full source while keeping the visible area fixed
+    // on canvas. The offset from the full image's center to the old visible
+    // area's center is known in source px; push it through the image's
+    // linear transform (rotation/scale/flip) to get the canvas-space shift.
+    img.set({ cropX: 0, cropY: 0, width: naturalW, height: naturalH });
+    const m = img.calcTransformMatrix();
+    const off = new fabric.Point(
+      snapshot.cropX + (snapshot.width ?? naturalW) / 2 - naturalW / 2,
+      snapshot.cropY + (snapshot.height ?? naturalH) / 2 - naturalH / 2
+    ).transform(m, true);
+    img.setPositionByOrigin(
+      new fabric.Point(visCenter.x - off.x, visCenter.y - off.y),
+      'center',
+      'center'
+    );
     img.set({
-      cropX: 0,
-      cropY: 0,
-      width: naturalW,
-      height: naturalH,
-      left: visLeft - snapshot.cropX * snapshot.scaleX,
-      top: visTop - snapshot.cropY * snapshot.scaleY,
       // Lock scale + rotation while cropping so the user can only *move* the
       // image (PPT-like); the crop rect handles what area is kept.
       hasControls: false,
@@ -1538,12 +1571,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     });
     img.setCoords();
 
-    // Crop rectangle at the currently-cropped area.
+    // Crop rectangle over the currently visible area, rotated with the
+    // image. Positioned by center so the stroke straddles the boundary
+    // symmetrically instead of offsetting the geometry.
     const cropRect = new fabric.Rect({
-      left: visLeft,
-      top: visTop,
       width: visW,
       height: visH,
+      angle: img.angle ?? 0,
       fill: 'transparent',
       stroke: '#ffffff',
       strokeWidth: 2,
@@ -1561,65 +1595,66 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       selectable: true,
       evented: true,
     });
+    // The crop frame must stay aligned with the image, so no rotate handle.
+    cropRect.setControlsVisibility({ mtr: false });
+    cropRect.setPositionByOrigin(visCenter, 'center', 'center');
     (cropRect as any).isCropRect = true;
 
-    const makeDim = (): fabric.Rect => {
-      const r = new fabric.Rect({
-        left: 0,
-        top: 0,
-        width: 0,
-        height: 0,
-        fill: 'rgba(0,0,0,0.55)',
-        selectable: false,
-        evented: false,
-        hoverCursor: 'default',
-      });
-      (r as any).isDimOverlay = true;
-      return r;
-    };
-    const dimT = makeDim();
-    const dimR = makeDim();
-    const dimB = makeDim();
-    const dimL = makeDim();
+    // One dim rect covering the whole scene (element size / zoom = scene
+    // size), with an inverted absolute clipPath as the see-through hole.
+    // A single clipped rect — unlike four axis-aligned strips — stays
+    // correct at any zoom level and for rotated crop frames.
+    const zoom = canvas.getZoom() || 1;
+    const hole = new fabric.Rect({
+      originX: 'center',
+      originY: 'center',
+      strokeWidth: 0,
+      absolutePositioned: true,
+      inverted: true,
+    });
+    const dim = new fabric.Rect({
+      originX: 'left',
+      originY: 'top',
+      left: 0,
+      top: 0,
+      width: canvas.getWidth() / zoom,
+      height: canvas.getHeight() / zoom,
+      fill: 'rgba(0,0,0,0.55)',
+      strokeWidth: 0,
+      selectable: false,
+      evented: false,
+      hoverCursor: 'default',
+      clipPath: hole,
+    });
+    (dim as any).isDimOverlay = true;
 
     const syncDims = () => {
-      const cw = canvas.getWidth();
-      const ch = canvas.getHeight();
-      const cx = cropRect.left ?? 0;
-      const cy = cropRect.top ?? 0;
-      const cwd = cropRect.getScaledWidth();
-      const chd = cropRect.getScaledHeight();
-
-      dimT.set({ left: 0, top: 0, width: cw, height: Math.max(0, cy) });
-      dimB.set({ left: 0, top: cy + chd, width: cw, height: Math.max(0, ch - (cy + chd)) });
-      dimL.set({ left: 0, top: cy, width: Math.max(0, cx), height: chd });
-      dimR.set({ left: cx + cwd, top: cy, width: Math.max(0, cw - (cx + cwd)), height: chd });
-      dimT.setCoords();
-      dimB.setCoords();
-      dimL.setCoords();
-      dimR.setCoords();
+      const c = cropRect.getCenterPoint();
+      hole.set({
+        left: c.x,
+        top: c.y,
+        width: (cropRect.width ?? 0) * (cropRect.scaleX ?? 1),
+        height: (cropRect.height ?? 0) * (cropRect.scaleY ?? 1),
+        angle: cropRect.angle ?? 0,
+      });
+      hole.setCoords();
+      dim.set('dirty', true);
     };
     syncDims();
 
-    // Keep dims in sync while user drags/scales the crop rect.
+    // Keep the hole in sync while the user drags/scales the crop rect.
     cropRect.on('moving', syncDims);
     cropRect.on('scaling', syncDims);
-
-    // Also re-sync when the image itself moves (user repositioning image
-    // under the crop). Nothing changes about the crop rect, but the dim
-    // rects should still repaint to reflect any window resize.
-    img.on?.('moving', syncDims);
 
     // Store refs on the image so exit routines can find them without
     // touching module-scope state (survives HMR).
     (img as any).__cropRect = cropRect;
-    (img as any).__cropDims = [dimT, dimR, dimB, dimL];
+    (img as any).__cropDims = [dim];
     (img as any).__cropSync = syncDims;
 
-    canvas.add(dimT, dimR, dimB, dimL, cropRect);
+    canvas.add(dim, cropRect);
     canvas.setActiveObject(cropRect);
     canvas.requestRenderAll();
-    set({ cropModeActive: true });
   },
 
   applyCrop: () => {
@@ -1634,63 +1669,61 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }
     const cropRect = img.__cropRect as fabric.Rect;
     const dims = (img.__cropDims || []) as fabric.Rect[];
+    const sync = img.__cropSync;
 
-    // Compute crop values in the image's *source* coordinate system.
-    // Because we un-cropped the image on enter, crop rect coords translate
-    // directly:  sourceX = (cropRectLeft - imgLeft) / scaleX.
-    const sx = img.scaleX || 1;
-    const sy = img.scaleY || 1;
-    const iL = img.left ?? 0;
-    const iT = img.top ?? 0;
-    const cL = cropRect.left ?? 0;
-    const cT = cropRect.top ?? 0;
-    // Use raw width/height * scale (not getScaledWidth) because getScaledWidth
-    // includes strokeWidth. The crop *area* is what's inside the stroke, so
-    // 2px stroke would otherwise leak into the crop dimensions.
-    const cW = (cropRect.width || 0) * (cropRect.scaleX || 1);
-    const cH = (cropRect.height || 0) * (cropRect.scaleY || 1);
-
-    let cropX = (cL - iL) / sx;
-    let cropY = (cT - iT) / sy;
-    let width = cW / sx;
-    let height = cH / sy;
-
-    // Clamp crop to source bounds so we don't render outside pixels.
+    // Corners of the crop rect's stroke-free path, mapped from canvas coords
+    // into the image's source pixel space (handles rotation and flip). The
+    // image is un-cropped while in crop mode, so width/height are the full
+    // source size and local (0,0) is the source center.
+    const rectM = cropRect.calcTransformMatrix();
+    const inv = fabric.util.invertTransform(img.calcTransformMatrix());
     const naturalW = img.width;
     const naturalH = img.height;
-    if (cropX < 0) {
-      width += cropX;
-      cropX = 0;
+    const hw = (cropRect.width ?? 0) / 2;
+    const hh = (cropRect.height ?? 0) / 2;
+    const xs: number[] = [];
+    const ys: number[] = [];
+    for (const [px, py] of [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]]) {
+      const p = new fabric.Point(px, py).transform(rectM).transform(inv);
+      xs.push(p.x + naturalW / 2);
+      ys.push(p.y + naturalH / 2);
     }
-    if (cropY < 0) {
-      height += cropY;
-      cropY = 0;
-    }
-    if (cropX + width > naturalW) width = naturalW - cropX;
-    if (cropY + height > naturalH) height = naturalH - cropY;
-    width = Math.max(1, width);
-    height = Math.max(1, height);
 
+    // Clamp to source bounds so no pixels outside the image leak in.
+    let cropX = Math.max(0, Math.min(...xs));
+    let cropY = Math.max(0, Math.min(...ys));
+    let width = Math.max(1, Math.min(naturalW, Math.max(...xs)) - cropX);
+    let height = Math.max(1, Math.min(naturalH, Math.max(...ys)) - cropY);
+    cropX = Math.max(0, Math.min(cropX, naturalW - width));
+    cropY = Math.max(0, Math.min(cropY, naturalH - height));
+
+    // Canvas point where the kept region's center must land, computed with
+    // the pre-crop matrix (changing width/height moves the image's center).
+    const target = new fabric.Point(
+      cropX + width / 2 - naturalW / 2,
+      cropY + height / 2 - naturalH / 2
+    ).transform(img.calcTransformMatrix());
+
+    const snap = img.__cropSnapshot || {};
     img.set({
       cropX,
       cropY,
       width,
       height,
-      // Reposition image so the cropped area sits where the crop rect is.
-      left: iL + cropX * sx,
-      top: iT + cropY * sy,
       // Restore normal interaction.
-      hasControls: (img.__cropSnapshot?.hasControls) ?? true,
-      lockScalingX: (img.__cropSnapshot?.lockScalingX) ?? false,
-      lockScalingY: (img.__cropSnapshot?.lockScalingY) ?? false,
-      lockRotation: (img.__cropSnapshot?.lockRotation) ?? false,
+      hasControls: snap.hasControls ?? true,
+      lockScalingX: snap.lockScalingX ?? false,
+      lockScalingY: snap.lockScalingY ?? false,
+      lockRotation: snap.lockRotation ?? false,
+      selectable: snap.selectable ?? true,
     });
+    img.setPositionByOrigin(target, 'center', 'center');
     img.setCoords();
 
-    // Detach handlers + remove overlays.
-    cropRect.off?.('moving');
-    cropRect.off?.('scaling');
-    img.off?.('moving');
+    // Detach handlers + remove overlays. This happens while cropModeActive
+    // is still true, so the object:removed events don't pollute history.
+    cropRect.off('moving', sync);
+    cropRect.off('scaling', sync);
     canvas.remove(cropRect, ...dims);
 
     delete img.__cropSnapshot;
@@ -1702,6 +1735,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     canvas.requestRenderAll();
     set({ cropModeActive: false });
     get().saveHistory();
+    get().autosave();
   },
 
   cancelCrop: () => {
@@ -1722,13 +1756,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const snap = img.__cropSnapshot as any;
     const cropRect = img.__cropRect as fabric.Rect;
     const dims = (img.__cropDims || []) as fabric.Rect[];
+    const sync = img.__cropSync;
 
     if (snap) img.set(snap);
     img.setCoords();
 
-    cropRect.off?.('moving');
-    cropRect.off?.('scaling');
-    img.off?.('moving');
+    cropRect.off('moving', sync);
+    cropRect.off('scaling', sync);
     canvas.remove(cropRect, ...dims);
 
     delete img.__cropSnapshot;
@@ -1750,20 +1784,18 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (!canvas) return;
     const img = canvas.getActiveObject() as any;
     if (!img || img.type !== 'image') return;
-    const el: HTMLImageElement | undefined =
-      img._element || (typeof img.getElement === 'function' ? img.getElement() : undefined);
-    const naturalW = el?.naturalWidth || img.width;
-    const naturalH = el?.naturalHeight || img.height;
-    const sx = img.scaleX || 1;
-    const sy = img.scaleY || 1;
-    img.set({
-      cropX: 0,
-      cropY: 0,
-      width: naturalW,
-      height: naturalH,
-      left: (img.left ?? 0) - (img.cropX ?? 0) * sx,
-      top: (img.top ?? 0) - (img.cropY ?? 0) * sy,
-    });
+    const { width: naturalW, height: naturalH } = getImageSourceSize(img);
+    const curW = img.width ?? naturalW;
+    const curH = img.height ?? naturalH;
+    // Keep the currently visible area fixed on canvas: the full image's
+    // center, expressed in the visible region's local frame, pushed through
+    // the current transform gives the new center (rotation/flip aware).
+    const target = new fabric.Point(
+      naturalW / 2 - (img.cropX ?? 0) - curW / 2,
+      naturalH / 2 - (img.cropY ?? 0) - curH / 2
+    ).transform(img.calcTransformMatrix());
+    img.set({ cropX: 0, cropY: 0, width: naturalW, height: naturalH });
+    img.setPositionByOrigin(target, 'center', 'center');
     img.setCoords();
     canvas.requestRenderAll();
     get().saveHistory();
@@ -1986,6 +2018,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (!canvas || !activeObject) return;
     activeObject.set({ left: (activeObject.left ?? 0) + dx, top: (activeObject.top ?? 0) + dy });
     activeObject.setCoords();
+    if (get().cropModeActive) {
+      // Keyboard nudges bypass the crop rect's moving event; keep the dim
+      // overlay's hole tracking it.
+      const cropHost = canvas.getObjects().find((o) => (o as any).__cropSync) as any;
+      cropHost?.__cropSync?.();
+    }
     canvas.requestRenderAll();
     get().saveHistory();
   },
@@ -2111,8 +2149,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   /* ---------- History ---------- */
   saveHistory: () => {
-    const canvas = get().canvas;
-    if (!canvas) return;
+    const { canvas, cropModeActive } = get();
+    // Never snapshot while cropping: the canvas temporarily contains the
+    // overlay objects and the un-cropped image, and undoing into such a
+    // snapshot would resurrect the overlays as permanent objects.
+    if (!canvas || cropModeActive) return;
     pushHistory(canvas, set);
   },
   initHistory: () => {
@@ -2128,8 +2169,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     set({ canUndo: false, canRedo: false });
   },
   undo: async () => {
-    const canvas = get().canvas;
-    if (!canvas || historyIndex <= 0) return;
+    const { canvas, cropModeActive } = get();
+    // loadFromJSON while cropping would replace the canvas objects under the
+    // active crop session, stranding cropModeActive with dangling overlays.
+    if (!canvas || cropModeActive || historyIndex <= 0) return;
     isRestoring = true;
     historyIndex--;
     await canvas.loadFromJSON(JSON.parse(historyStack[historyIndex]));
@@ -2145,8 +2188,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     isRestoring = false;
   },
   redo: async () => {
-    const canvas = get().canvas;
-    if (!canvas || historyIndex >= historyStack.length - 1) return;
+    const { canvas, cropModeActive } = get();
+    if (!canvas || cropModeActive || historyIndex >= historyStack.length - 1) return;
     isRestoring = true;
     historyIndex++;
     await canvas.loadFromJSON(JSON.parse(historyStack[historyIndex]));

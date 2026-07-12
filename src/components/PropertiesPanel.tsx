@@ -448,6 +448,51 @@ const PropertiesPanel: React.FC = () => {
     exitTableEditMode,
   } = useEditorStore();
 
+  // Crop mode is modal, and the active object is the crop rectangle (not the
+  // image) — render only the crop controls so nothing else can edit the
+  // temporary crop state.
+  if (cropModeActive) {
+    return (
+      <aside
+        className="scrollable"
+        style={{
+          width: 'var(--props-panel-width)',
+          height: '100%',
+          backgroundColor: 'var(--bg-panel)',
+          borderLeft: '1px solid var(--border)',
+        }}
+      >
+        <div className="panel-section">
+          <div className="panel-title">Crop image</div>
+          <div style={{
+            padding: 10,
+            borderRadius: 'var(--radius-sm)',
+            backgroundColor: 'var(--accent-soft)',
+            border: '1px solid var(--accent)',
+            fontSize: 12,
+            color: 'var(--text-primary)',
+            marginBottom: 10,
+            lineHeight: 1.5,
+          }}>
+            <b>Drag the crop rectangle</b> to change what's kept.
+            <br />
+            <b>Drag the image</b> to reposition it under the crop.
+            <br />
+            <span style={{ color: 'var(--text-tertiary)' }}>Press <b>Enter</b> to apply, <b>Escape</b> to cancel.</span>
+          </div>
+          <Row>
+            <button className="primary-btn" style={{ flex: 1, justifyContent: 'center' }} onClick={applyCrop}>
+              Apply
+            </button>
+            <button className="pill-btn" style={{ flex: 1, justifyContent: 'center' }} onClick={cancelCrop}>
+              Cancel
+            </button>
+          </Row>
+        </div>
+      </aside>
+    );
+  }
+
   if (!activeObject) {
     return (
       <aside
@@ -1233,36 +1278,6 @@ const PropertiesPanel: React.FC = () => {
         </div>
       )}
 
-      {/* Image: Crop mode banner */}
-      {isImage && cropModeActive && (
-        <div className="panel-section">
-          <div style={{
-            padding: 10,
-            borderRadius: 'var(--radius-sm)',
-            backgroundColor: 'var(--accent-soft)',
-            border: '1px solid var(--accent)',
-            fontSize: 12,
-            color: 'var(--text-primary)',
-            marginBottom: 10,
-            lineHeight: 1.5,
-          }}>
-            <b>Drag the crop rectangle</b> to change what's kept.
-            <br />
-            <b>Drag the image</b> to reposition it under the crop.
-            <br />
-            <span style={{ color: 'var(--text-tertiary)' }}>Press <b>Enter</b> to apply, <b>Escape</b> to cancel.</span>
-          </div>
-          <Row>
-            <button className="primary-btn" style={{ flex: 1, justifyContent: 'center' }} onClick={applyCrop}>
-              Apply
-            </button>
-            <button className="pill-btn" style={{ flex: 1, justifyContent: 'center' }} onClick={cancelCrop}>
-              Cancel
-            </button>
-          </Row>
-        </div>
-      )}
-
       {/* Image: Crop + Reset + AI Background removal */}
       {isImage && !cropModeActive && (
         <div className="panel-section">
@@ -1301,9 +1316,16 @@ const PropertiesPanel: React.FC = () => {
               Downloading the AI model on first use (~30 MB). Subsequent runs are fast.
             </p>
           )}
-          {/* Show Reset only when the image actually has a crop applied. */}
-          {((o.cropX ?? 0) > 0 || (o.cropY ?? 0) > 0 ||
-            ((o._element as HTMLImageElement | undefined)?.naturalWidth && (o._element as HTMLImageElement).naturalWidth !== o.width)) && (
+          {/* Show Reset only when the image actually has a crop applied.
+              After Fabric filters run, _element is a canvas without
+              naturalWidth, so check the original source element first. */}
+          {(() => {
+            const srcEl = (o._originalElement || o._element) as (HTMLImageElement & HTMLCanvasElement) | undefined;
+            const srcW = srcEl?.naturalWidth || srcEl?.width;
+            const srcH = srcEl?.naturalHeight || srcEl?.height;
+            return (o.cropX ?? 0) > 0 || (o.cropY ?? 0) > 0 ||
+              (!!srcW && srcW !== o.width) || (!!srcH && srcH !== o.height);
+          })() && (
             <button
               onClick={resetCrop}
               style={{
