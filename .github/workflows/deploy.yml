@@ -1,0 +1,67 @@
+name: Deploy to GitHub Pages
+
+on:
+  # Deploy every time main advances
+  push:
+    branches: [main]
+  # Manual trigger from the Actions tab
+  workflow_dispatch:
+
+# The minimum permissions the deploy-pages action needs.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one Pages deployment at a time. In-flight runs finish; we don't cancel
+# them (Pages requires deploy artifacts to be committed atomically).
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check + Vite build
+        # vite.config.ts reads GITHUB_REPOSITORY at build time and sets the
+        # correct base path for the repo automatically.
+        run: npm run build
+        env:
+          # Make explicit even though Actions sets these by default — future-
+          # proofs against runner env changes.
+          GITHUB_ACTIONS: 'true'
+          GITHUB_REPOSITORY: ${{ github.repository }}
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
