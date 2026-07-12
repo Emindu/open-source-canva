@@ -30,6 +30,26 @@ const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromi
   scene→element scale factor is `canvas.width / 900` (headless DPR = 1).
 - Scene→page coords: `upperCanvasBox.{x,y} + scene * zoom`.
 
+## Google Fonts in the test browser
+
+Chromium can't reach fonts.googleapis.com directly (sandbox egress) and won't
+trust the agent proxy's MITM cert, so canvas text silently renders in a serif
+fallback — pixel assertions about glyphs then lie. Fix: run node with
+`NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt`, launch the browser with
+`proxy: { server: process.env.HTTPS_PROXY, bypass: 'localhost,127.0.0.1' }`,
+and serve font URLs through Playwright's Node-side fetch:
+
+```js
+await page.route(/fonts\.(googleapis|gstatic)\.com/, async (route) => {
+  const resp = await ctx.request.fetch(route.request());
+  await route.fulfill({ response: resp });
+});
+```
+
+To confirm a family really loaded, check `[...document.fonts].some(f =>
+f.family === 'X' && f.status === 'loaded')` — `document.fonts.check()` returns
+true even for unregistered families.
+
 ## Gotchas
 
 - **fabric v7 defaults `originX/originY` to `'center'`** — `left`/`top` and the

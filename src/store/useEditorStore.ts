@@ -21,7 +21,13 @@ const MAX_HISTORY = 50;
 export type AlignDir = 'left' | 'center-h' | 'right' | 'top' | 'center-v' | 'bottom';
 export type DistributeAxis = 'h' | 'v';
 export type CurveKind = 'none' | 'arc-up' | 'arc-down' | 'wave' | 'circle';
-export type TextEffect = 'none' | 'neon' | 'echo' | 'splice' | '3d' | 'outline' | 'hollow' | 'shadow';
+export type TextEffect = 'none' | 'neon' | 'echo' | 'splice' | '3d' | 'outline' | 'hollow' | 'shadow' | 'rainbow';
+export interface TextShadowPatch {
+  color?: string;
+  blur?: number;
+  offsetX?: number;
+  offsetY?: number;
+}
 
 interface EditorState {
   canvas: fabric.Canvas | null;
@@ -59,7 +65,7 @@ interface EditorState {
   addBlob: (type: number) => void;
   addArrow: () => void;
   addLine: () => void;
-  addText: (variant?: 'heading' | 'subheading' | 'body' | 'sinhala-heading' | 'sinhala-body') => Promise<void>;
+  addText: (variant?: 'heading' | 'subheading' | 'body' | 'display' | 'script' | 'comic' | 'sinhala-heading' | 'sinhala-body') => Promise<void>;
   addImage: (url: string) => void;
   addIconSvg: (svg: string) => Promise<void>;
   loadTemplate: (id: string) => Promise<void>;
@@ -92,8 +98,9 @@ interface EditorState {
   paste: () => Promise<void>;
 
   updateSelectedProperty: (key: string, value: any) => Promise<void> | void;
-  applyCurve: (kind: CurveKind) => void;
+  applyCurve: (kind: CurveKind, amount?: number) => void;
   applyTextEffect: (preset: TextEffect) => void;
+  setTextShadow: (patch: TextShadowPatch | null) => void;
   toggleSuperscript: () => void;
   toggleSubscript: () => void;
 
@@ -279,6 +286,7 @@ let historyStack: string[] = [];
 let historyIndex = -1;
 let isRestoring = false;
 let clipboard: fabric.Object | null = null;
+let storeAutosaveTimer: ReturnType<typeof setTimeout> | null = null;
 
 const pushHistory = (canvas: fabric.Canvas, setState: (partial: Partial<EditorState>) => void) => {
   if (isRestoring) return;
@@ -581,6 +589,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       heading: { text: 'Add a heading', fontSize: 44, fontWeight: '700', width: 360, fontFamily: 'Inter' },
       subheading: { text: 'Add a subheading', fontSize: 28, fontWeight: '600', width: 320, fontFamily: 'Inter' },
       body: { text: 'Add a little bit of body text', fontSize: 18, fontWeight: '400', width: 280, fontFamily: 'Inter' },
+      display: { text: 'BIG STATEMENT', fontSize: 56, fontWeight: '400', width: 460, fontFamily: 'Bebas Neue' },
+      script: { text: 'Something lovely', fontSize: 44, fontWeight: '400', width: 400, fontFamily: 'Pacifico' },
+      comic: { text: 'POW! WOW!', fontSize: 48, fontWeight: '400', width: 340, fontFamily: 'Bangers' },
       'sinhala-heading': { text: 'ආයුබෝවන්', fontSize: 52, fontWeight: '700', width: 420, fontFamily: 'Noto Sans Sinhala' },
       'sinhala-body': { text: 'ඔබට සාදරයෙන් පිළිගනිමු', fontSize: 22, fontWeight: '400', width: 360, fontFamily: 'Noto Sans Sinhala' },
     } as const;
@@ -1285,17 +1296,28 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   /* ---------- Advanced text: curves, effects, sup/sub ---------- */
-  applyCurve: (kind) => {
+  /**
+   * Text-on-path curves. `amount` (10..100) controls how strong the bend is:
+   * arcs/waves scale their amplitude with it; for circles it controls how much
+   * of the circle the text wraps around (100 = full circle). The kind + amount
+   * are stored on the object (and serialized via EXTRA_PROPS) so the slider
+   * can re-shape an existing curve.
+   */
+  applyCurve: (kind, amount) => {
     const canvas = get().canvas;
     if (!canvas) return;
     const target = canvas.getActiveObject() as any;
     if (!target || typeof target.removeStyle !== 'function') return;
 
+    const amt = Math.min(100, Math.max(10, amount ?? target.curveAmount ?? 50));
+
     if (kind === 'none') {
       target.set('path', null);
+      target.curveKind = undefined;
+      target.curveAmount = undefined;
     } else {
       const w = Math.max(200, target.getScaledWidth?.() ?? 400);
-      const amp = Math.max(60, w * 0.2);
+      const amp = Math.max(12, w * 0.4 * (amt / 100));
       let d = '';
       if (kind === 'arc-up') {
         d = `M 0 ${amp} Q ${w / 2} ${-amp} ${w} ${amp}`;
@@ -1305,11 +1327,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         const q = w / 4;
         d = `M 0 ${amp / 2} Q ${q / 2} 0 ${q} ${amp / 2} T ${w / 2} ${amp / 2} T ${w * 3 / 4} ${amp / 2} T ${w} ${amp / 2}`;
       } else if (kind === 'circle') {
-        const r = w / (2 * Math.PI); // circumference matches text width
+        // amount = how much of the circle the text covers; at 100 the
+        // circumference equals the text width (a closed circle of text).
+        const r = (w / (2 * Math.PI)) * (100 / amt);
         d = `M ${r} 0 A ${r} ${r} 0 1 1 ${r} ${2 * r} A ${r} ${r} 0 1 1 ${r} 0`;
       }
       const path = new fabric.Path(d, { fill: '', stroke: '', selectable: false, evented: false });
       target.set('path', path);
+      target.curveKind = kind;
+      target.curveAmount = amt;
     }
     target._forceClearCache = true;
     if (typeof target.initDimensions === 'function') target.initDimensions();
@@ -1333,47 +1359,63 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       if (typeof target.removeStyle === 'function') target.removeStyle(k);
     });
 
-    const currentFill =
-      typeof target.fill === 'string' && /^#[0-9a-fA-F]{6}$/.test(target.fill) ? target.fill : '#7c5cff';
+    const isHex = (v: unknown): v is string => typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v);
+    const currentFill = isHex(target.fill) ? target.fill : isHex(target.origFill) ? target.origFill : '#7c5cff';
+
+    // Presets that overwrite the fill (neon/outline/hollow) remember the
+    // original solid color so 'none' can restore it instead of leaving the
+    // text white or transparent.
+    const rememberFill = () => {
+      if (!target.origFill && isHex(target.fill)) target.origFill = target.fill;
+    };
 
     const setEffect = (props: Record<string, any>) => {
       Object.entries(props).forEach(([k, v]) => target.set(k, v));
     };
+    const makeShadow = (opts: { color: string; blur: number; offsetX: number; offsetY: number }) =>
+      new fabric.Shadow(opts);
 
     switch (preset) {
-      case 'none':
-        setEffect({ stroke: null, strokeWidth: 0, shadow: null });
+      case 'none': {
+        const restore =
+          target.origFill ??
+          (typeof target.fill === 'string' && target.fill !== 'transparent' ? target.fill : '#111827');
+        setEffect({ fill: restore, stroke: null, strokeWidth: 0, shadow: null });
+        target.origFill = undefined;
         break;
+      }
       case 'neon':
+        rememberFill();
         setEffect({
           fill: '#ffffff',
           stroke: null,
           strokeWidth: 0,
-          shadow: { color: currentFill, blur: 30, offsetX: 0, offsetY: 0 },
+          shadow: makeShadow({ color: currentFill, blur: 30, offsetX: 0, offsetY: 0 }),
         });
         break;
       case 'echo':
         setEffect({
           stroke: null,
           strokeWidth: 0,
-          shadow: { color: currentFill, blur: 0, offsetX: 8, offsetY: 8 },
+          shadow: makeShadow({ color: currentFill, blur: 0, offsetX: 8, offsetY: 8 }),
         });
         break;
       case 'splice':
         setEffect({
           stroke: currentFill,
           strokeWidth: 3,
-          shadow: { color: '#facc15', blur: 0, offsetX: 6, offsetY: 6 },
+          shadow: makeShadow({ color: '#facc15', blur: 0, offsetX: 6, offsetY: 6 }),
         });
         break;
       case '3d':
         setEffect({
           stroke: '#000000',
           strokeWidth: 1,
-          shadow: { color: '#0f172a', blur: 0, offsetX: 6, offsetY: 6 },
+          shadow: makeShadow({ color: '#0f172a', blur: 0, offsetX: 6, offsetY: 6 }),
         });
         break;
       case 'outline':
+        rememberFill();
         setEffect({
           fill: 'transparent',
           stroke: currentFill,
@@ -1382,6 +1424,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         });
         break;
       case 'hollow':
+        rememberFill();
         setEffect({
           fill: 'transparent',
           stroke: '#111827',
@@ -1391,13 +1434,63 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         break;
       case 'shadow':
         setEffect({
-          shadow: { color: 'rgba(0,0,0,0.4)', blur: 12, offsetX: 4, offsetY: 6 },
+          shadow: makeShadow({ color: 'rgba(0,0,0,0.4)', blur: 12, offsetX: 4, offsetY: 6 }),
         });
         break;
+      case 'rainbow': {
+        // Per-character hue cycle — classic word-art. The per-char fills are
+        // regular style overrides, so they serialize and any other preset
+        // clears them (removeStyle('fill') above).
+        setEffect({ stroke: null, strokeWidth: 0, shadow: null });
+        // Style indices are grapheme-based in fabric; use its grapheme split
+        // so complex scripts (Sinhala clusters, emoji) color correctly.
+        const graphemes: string[] = target._text ?? [...(target.text ?? '')];
+        const visible = graphemes.filter((ch) => !/\s/.test(ch)).length;
+        let vi = 0;
+        for (let i = 0; i < graphemes.length; i++) {
+          if (/\s/.test(graphemes[i])) continue;
+          const hue = Math.round((vi / Math.max(1, visible)) * 330);
+          target.setSelectionStyles({ fill: `hsl(${hue}, 85%, 55%)` }, i, i + 1);
+          vi++;
+        }
+        break;
+      }
     }
     target._forceClearCache = true;
     if (typeof target.initDimensions === 'function') target.initDimensions();
     target.setCoords();
+    target.dirty = true;
+    canvas.renderAll();
+    set({
+      activeObject: Object.assign(Object.create(Object.getPrototypeOf(target)), target),
+    });
+    get().saveHistory();
+  },
+
+  /**
+   * Fine-tune (or remove) the text shadow. Merges the patch over the current
+   * shadow so individual sliders can adjust one property at a time; effect
+   * presets provide the starting point.
+   */
+  setTextShadow: (patch) => {
+    const canvas = get().canvas;
+    if (!canvas) return;
+    const target = canvas.getActiveObject() as any;
+    if (!target || typeof target.removeStyle !== 'function') return;
+    if (patch === null) {
+      target.set('shadow', null);
+    } else {
+      const cur = target.shadow || {};
+      target.set(
+        'shadow',
+        new fabric.Shadow({
+          color: patch.color ?? cur.color ?? 'rgba(0,0,0,0.4)',
+          blur: patch.blur ?? cur.blur ?? 12,
+          offsetX: patch.offsetX ?? cur.offsetX ?? 4,
+          offsetY: patch.offsetY ?? cur.offsetY ?? 6,
+        })
+      );
+    }
     target.dirty = true;
     canvas.renderAll();
     set({
@@ -2155,6 +2248,11 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     // snapshot would resurrect the overlays as permanent objects.
     if (!canvas || cropModeActive) return;
     pushHistory(canvas, set);
+    // Panel edits (fonts, effects, curves, fills…) mutate objects directly
+    // without firing canvas events, so Workspace's event-driven autosave
+    // never sees them. Every history-worthy change should persist.
+    if (storeAutosaveTimer) clearTimeout(storeAutosaveTimer);
+    storeAutosaveTimer = setTimeout(() => get().autosave(), 800);
   },
   initHistory: () => {
     const canvas = get().canvas;

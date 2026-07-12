@@ -43,7 +43,7 @@ import { useEditorStore } from '../store/useEditorStore';
 import type { AlignDir } from '../store/useEditorStore';
 import { Grid, Plus } from 'lucide-react';
 import { applyWasmFilter } from '../utils/wasmFilters';
-import { FONTS } from '../utils/fonts';
+import FontPicker from './FontPicker';
 import {
   BLEND_MODES,
   GRADIENT_PRESETS,
@@ -427,6 +427,7 @@ const PropertiesPanel: React.FC = () => {
     distribute,
     applyCurve,
     applyTextEffect,
+    setTextShadow,
     toggleSuperscript,
     toggleSubscript,
     setImageFilter,
@@ -880,27 +881,10 @@ const PropertiesPanel: React.FC = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div className="field">
               <label className="field-label">Font</label>
-              <select
-                className="field-select"
+              <FontPicker
                 value={o.fontFamily || 'Inter'}
-                onChange={(e) => updateSelectedProperty('fontFamily', e.target.value)}
-                style={{ fontFamily: `"${o.fontFamily || 'Inter'}"` }}
-              >
-                <optgroup label="Latin">
-                  {FONTS.filter((f) => f.script === 'latin').map((f) => (
-                    <option key={f.family} value={f.family} style={{ fontFamily: `"${f.family}"` }}>
-                      {f.label}
-                    </option>
-                  ))}
-                </optgroup>
-                <optgroup label="සිංහල · Sinhala">
-                  {FONTS.filter((f) => f.script === 'sinhala').map((f) => (
-                    <option key={f.family} value={f.family} style={{ fontFamily: `"${f.family}"` }}>
-                      {f.sample ? `${f.label} — ${f.sample}` : f.label}
-                    </option>
-                  ))}
-                </optgroup>
-              </select>
+                onChange={(family) => updateSelectedProperty('fontFamily', family)}
+              />
             </div>
             <Row>
               <NumberField
@@ -1077,22 +1061,45 @@ const PropertiesPanel: React.FC = () => {
                   { id: 'arc-down', label: 'Arc↓' },
                   { id: 'wave', label: 'Wave' },
                   { id: 'circle', label: 'Circle' },
-                ] as const).map((c) => (
-                  <button
-                    key={c.id}
-                    className="tool-btn"
-                    onClick={() => applyCurve(c.id)}
-                    style={{
-                      justifyContent: 'center',
-                      fontSize: 10,
-                      padding: '6px 2px',
-                      backgroundColor: !!o.path && c.id !== 'none' ? 'var(--bg-elevated)' : 'var(--bg-elevated)',
-                    }}
-                  >
-                    {c.label}
-                  </button>
-                ))}
+                ] as const).map((c) => {
+                  const active = c.id === 'none' ? !o.path : o.curveKind === c.id;
+                  return (
+                    <button
+                      key={c.id}
+                      className="tool-btn"
+                      onClick={() => applyCurve(c.id)}
+                      style={{
+                        justifyContent: 'center',
+                        fontSize: 10,
+                        padding: '6px 2px',
+                        backgroundColor: active ? 'var(--accent-soft)' : 'var(--bg-elevated)',
+                        borderColor: active ? 'var(--accent)' : undefined,
+                      }}
+                    >
+                      {c.label}
+                    </button>
+                  );
+                })}
               </div>
+              {!!o.path && !!o.curveKind && (
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <label className="field-label">Amount</label>
+                    <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
+                      {o.curveAmount ?? 50}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min={10}
+                    max={100}
+                    step={1}
+                    value={o.curveAmount ?? 50}
+                    onChange={(e) => applyCurve(o.curveKind, parseInt(e.target.value, 10))}
+                    style={{ accentColor: 'var(--accent)', width: '100%' }}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Effect presets */}
@@ -1110,6 +1117,7 @@ const PropertiesPanel: React.FC = () => {
                   { id: '3d', label: '3D' },
                   { id: 'outline', label: 'Outline' },
                   { id: 'hollow', label: 'Hollow' },
+                  { id: 'rainbow', label: 'Rainbow' },
                 ] as const).map((p) => (
                   <button
                     key={p.id}
@@ -1122,6 +1130,53 @@ const PropertiesPanel: React.FC = () => {
                 ))}
               </div>
             </div>
+
+            {/* Shadow fine-tuning (visible once any preset added a shadow) */}
+            {!!o.shadow && (
+              <div className="field">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <label className="field-label">Shadow settings</label>
+                  <button
+                    className="icon-btn"
+                    onClick={() => setTextShadow(null)}
+                    title="Remove shadow"
+                    style={{ width: 22, height: 22 }}
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+                  <ColorField
+                    value={typeof o.shadow.color === 'string' && o.shadow.color.startsWith('#') ? o.shadow.color : '#000000'}
+                    fallback="#000000"
+                    onChange={(c) => setTextShadow({ color: c })}
+                  />
+                  {([
+                    { key: 'blur', label: 'Blur', min: 0, max: 60, value: o.shadow.blur ?? 0 },
+                    { key: 'offsetX', label: 'Offset X', min: -40, max: 40, value: o.shadow.offsetX ?? 0 },
+                    { key: 'offsetY', label: 'Offset Y', min: -40, max: 40, value: o.shadow.offsetY ?? 0 },
+                  ] as const).map((s) => (
+                    <div key={s.key}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <label className="field-label">{s.label}</label>
+                        <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
+                          {s.value}
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min={s.min}
+                        max={s.max}
+                        step={1}
+                        value={s.value}
+                        onChange={(e) => setTextShadow({ [s.key]: parseInt(e.target.value, 10) })}
+                        style={{ accentColor: 'var(--accent)', width: '100%' }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

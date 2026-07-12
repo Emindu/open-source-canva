@@ -77,6 +77,25 @@ const TextPanel: React.FC = () => {
       </div>
 
       <div className="panel-section">
+        <div className="panel-title">Font art</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <button className="tool-btn" onClick={() => addText('display')}>
+            <span style={{ fontFamily: '"Bebas Neue"', fontSize: 18, letterSpacing: 1 }}>BIG STATEMENT</span>
+          </button>
+          <button className="tool-btn" onClick={() => addText('script')}>
+            <span style={{ fontFamily: '"Pacifico"', fontSize: 15 }}>Something lovely</span>
+          </button>
+          <button className="tool-btn" onClick={() => addText('comic')}>
+            <span style={{ fontFamily: '"Bangers"', fontSize: 17, letterSpacing: 1 }}>POW! WOW!</span>
+          </button>
+        </div>
+        <p style={{ marginTop: 10, fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.5 }}>
+          Combine with <b>Curve</b>, <b>Effects</b> and gradient fills in the
+          right panel to build word-art.
+        </p>
+      </div>
+
+      <div className="panel-section">
         <div className="panel-title">සිංහල · Sinhala</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <button className="tool-btn" onClick={() => addText('sinhala-heading')}>
