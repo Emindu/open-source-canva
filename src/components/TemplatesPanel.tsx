@@ -1,9 +1,53 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import * as fabric from 'fabric';
 import { useEditorStore } from '../store/useEditorStore';
 import { TEMPLATES } from '../utils/templates';
 import type { TemplateDef } from '../utils/templates';
 
+/**
+ * Real template previews: each template is built once on an offscreen
+ * StaticCanvas and rasterized to a data URL. Cached at module scope so
+ * re-opening the panel is instant. Renders are queued one at a time —
+ * building 18 canvases in parallel janks the UI.
+ */
+const thumbCache = new Map<string, string>();
+let renderQueue: Promise<void> = Promise.resolve();
+
+const renderThumb = (t: TemplateDef): Promise<string> => {
+  const cached = thumbCache.get(t.id);
+  if (cached) return Promise.resolve(cached);
+  const job = renderQueue.then(async () => {
+    if (thumbCache.has(t.id)) return;
+    try {
+      const off = new fabric.StaticCanvas(undefined, { width: t.width, height: t.height });
+      off.backgroundColor = t.background;
+      await t.build(off as unknown as fabric.Canvas, fabric, () => {});
+      off.renderAll();
+      // 2x the display size for crisp thumbs on dense screens.
+      const scale = Math.min(420 / t.width, 320 / t.height);
+      thumbCache.set(t.id, off.toDataURL({ format: 'png', multiplier: scale }));
+      off.dispose();
+    } catch (e) {
+      console.warn('Template thumb render failed', t.id, e);
+    }
+  });
+  renderQueue = job;
+  return job.then(() => thumbCache.get(t.id) ?? '');
+};
+
 const TemplateThumb: React.FC<{ t: TemplateDef; onClick: () => void }> = ({ t, onClick }) => {
+  const [img, setImg] = useState<string>(() => thumbCache.get(t.id) ?? '');
+  useEffect(() => {
+    if (img) return;
+    let alive = true;
+    renderThumb(t).then((url) => {
+      if (alive && url) setImg(url);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [t, img]);
+
   // Preserve aspect ratio: fit inside a 210x160 box using the smaller scale.
   const maxW = 210;
   const maxH = 160;
@@ -46,49 +90,33 @@ const TemplateThumb: React.FC<{ t: TemplateDef; onClick: () => void }> = ({ t, o
         style={{
           width: thumbW,
           height: thumbH,
+          // Gradient placeholder until the real render lands.
           background: `linear-gradient(135deg, ${t.preview.from}, ${t.preview.to})`,
           position: 'relative',
           overflow: 'hidden',
           boxShadow: '0 2px 8px rgba(0,0,0,0.35)',
         }}
       >
-        {/* Simplified visual: two thin bars representing text */}
-        <div
-          style={{
-            position: 'absolute',
-            left: '10%',
-            top: '30%',
-            width: '60%',
-            height: 6,
-            borderRadius: 3,
-            backgroundColor: t.preview.accents?.[0] ?? '#ffffff',
-            opacity: 0.9,
-          }}
-        />
-        <div
-          style={{
-            position: 'absolute',
-            left: '10%',
-            top: '45%',
-            width: '75%',
-            height: 4,
-            borderRadius: 2,
-            backgroundColor: '#ffffff',
-            opacity: 0.55,
-          }}
-        />
-        <div
-          style={{
-            position: 'absolute',
-            left: '10%',
-            top: '55%',
-            width: '40%',
-            height: 4,
-            borderRadius: 2,
-            backgroundColor: '#ffffff',
-            opacity: 0.4,
-          }}
-        />
+        {img ? (
+          <img
+            src={img}
+            alt={t.name}
+            style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }}
+          />
+        ) : (
+          <div
+            style={{
+              position: 'absolute',
+              left: '10%',
+              top: '40%',
+              width: '60%',
+              height: 6,
+              borderRadius: 3,
+              backgroundColor: t.preview.accents?.[0] ?? '#ffffff',
+              opacity: 0.9,
+            }}
+          />
+        )}
       </div>
       </div>
       <div style={{ padding: '8px 10px', textAlign: 'left' }}>
