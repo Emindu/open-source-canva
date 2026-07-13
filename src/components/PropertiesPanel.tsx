@@ -55,7 +55,7 @@ import {
   readFillColors,
 } from '../utils/fills';
 import type { FillMode } from '../utils/fills';
-import { FILTER_PRESETS, readFilterState } from '../utils/imageFilters';
+import { FILTER_PRESETS, GRADE_PRESETS, readFilterState } from '../utils/imageFilters';
 import ColorField from './ColorField';
 
 const toTitleCase = (s: string) =>
@@ -432,6 +432,7 @@ const PropertiesPanel: React.FC = () => {
     toggleSubscript,
     setImageFilter,
     applyImagePreset,
+    applyGradePreset,
     resetImageFilters,
     startCropMode,
     applyCrop,
@@ -1464,6 +1465,122 @@ const PropertiesPanel: React.FC = () => {
               {slider('Saturation', 'saturation', -1, 1, 0.01, (v) => `${Math.round(v * 100)}`)}
               {slider('Blur', 'blur', 0, 1, 0.01, (v) => `${(v * 100).toFixed(0)}%`)}
               {slider('Hue rotation', 'hue', -Math.PI, Math.PI, 0.01, (v) => `${Math.round((v * 180) / Math.PI)}°`)}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Image: Color grading */}
+      {isImage && !cropModeActive && (() => {
+        const state = readFilterState(activeObject);
+        const slider = (
+          label: string,
+          key: keyof typeof state,
+          min: number,
+          max: number
+        ) => (
+          <div className="field" key={key as string}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <label className="field-label">{label}</label>
+              <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
+                {Math.round(((state[key] as number) || 0) * 100)}
+              </span>
+            </div>
+            <input
+              type="range"
+              min={min}
+              max={max}
+              step={0.01}
+              value={(state[key] as number) || 0}
+              onChange={(e) => setImageFilter(key, parseFloat(e.target.value))}
+              style={{ accentColor: 'var(--accent)', width: '100%' }}
+            />
+          </div>
+        );
+        const tone = (
+          label: string,
+          colorKey: 'shadowsColor' | 'highlightsColor',
+          amountKey: 'shadowsAmount' | 'highlightsAmount',
+          fallback: string
+        ) => (
+          <div className="field" key={amountKey}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <label className="field-label">{label}</label>
+              <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums' }}>
+                {Math.round((state[amountKey] || 0) * 100)}%
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input
+                type="color"
+                value={/^#[0-9a-fA-F]{6}$/.test(state[colorKey] || '') ? state[colorKey]! : fallback}
+                onChange={(e) => setImageFilter(colorKey, e.target.value)}
+                title={`${label} tint color`}
+                style={{
+                  width: 30,
+                  height: 26,
+                  padding: 0,
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-sm)',
+                  backgroundColor: 'transparent',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                }}
+              />
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={state[amountKey] || 0}
+                onChange={(e) => setImageFilter(amountKey, parseFloat(e.target.value))}
+                style={{ accentColor: 'var(--accent)', width: '100%' }}
+              />
+            </div>
+          </div>
+        );
+        return (
+          <div className="panel-section">
+            <div className="panel-title">Color grading</div>
+            {/* Cinematic looks */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 12 }}>
+              {GRADE_PRESETS.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => applyGradePreset(p.id)}
+                  title={p.label}
+                  style={{
+                    padding: 0,
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius-sm)',
+                    overflow: 'hidden',
+                    cursor: 'pointer',
+                    backgroundColor: 'var(--bg-elevated)',
+                  }}
+                >
+                  <div style={{ height: 26, background: `linear-gradient(135deg, ${p.from}, ${p.to})` }} />
+                  <div
+                    style={{
+                      fontSize: 9,
+                      padding: '3px 2px',
+                      color: 'var(--text-secondary)',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    {p.label}
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {slider('Temperature', 'temperature', -1, 1)}
+              {slider('Tint', 'tint', -1, 1)}
+              {slider('Vibrance', 'vibrance', -1, 1)}
+              {slider('Exposure', 'exposure', -1, 1)}
+              {tone('Shadows tint', 'shadowsColor', 'shadowsAmount', '#1d4ed8')}
+              {tone('Highlights tint', 'highlightsColor', 'highlightsAmount', '#f59e0b')}
             </div>
           </div>
         );

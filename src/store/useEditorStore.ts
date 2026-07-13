@@ -6,6 +6,8 @@ import {
   defaultFilterState,
   readFilterState,
   FILTER_PRESETS,
+  GRADE_PRESETS,
+  GRADING_KEYS,
 } from '../utils/imageFilters';
 import type { FilterState } from '../utils/imageFilters';
 import { loadRecentColors, pushRecent, saveRecentColors } from '../utils/recentColors';
@@ -133,6 +135,7 @@ interface EditorState {
   hideContextMenu: () => void;
   setImageFilter: (kind: keyof FilterState, value: any) => void;
   applyImagePreset: (id: string) => void;
+  applyGradePreset: (id: string) => void;
   resetImageFilters: () => void;
   startCropMode: () => void;
   applyCrop: () => void;
@@ -280,6 +283,15 @@ const getImageSourceSize = (img: any): { width: number; height: number } => {
     height: orig?.naturalHeight || orig?.height || el?.naturalHeight || el?.height || img.height || 100,
   };
 };
+
+/** Read a Blob as a data URL so image sources survive save/reload. */
+const blobToDataURL = (blob: Blob): Promise<string> =>
+  new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result as string);
+    r.onerror = () => rej(r.error);
+    r.readAsDataURL(blob);
+  });
 
 /* -------------------- History & clipboard (module scope) -------------------- */
 let historyStack: string[] = [];
@@ -624,7 +636,16 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const canvas = get().canvas;
     if (!canvas) return;
     try {
-      const img = await fabric.FabricImage.fromURL(url, { crossOrigin: 'anonymous' });
+      // blob: URLs die on page reload — autosave would persist a dead
+      // reference and the failed load then aborts the whole project restore.
+      // Inline them as data URLs before Fabric ever sees them.
+      let src = url;
+      if (url.startsWith('blob:')) {
+        const blob = await (await fetch(url)).blob();
+        src = await blobToDataURL(blob);
+        URL.revokeObjectURL(url);
+      }
+      const img = await fabric.FabricImage.fromURL(src, { crossOrigin: 'anonymous' });
       const maxDim = 500;
       const scale = Math.min(1, maxDim / Math.max(img.width || maxDim, img.height || maxDim));
       img.set({ left: 100, top: 100, scaleX: scale, scaleY: scale });
@@ -1563,6 +1584,27 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     });
     get().saveHistory();
   },
+  applyGradePreset: (id) => {
+    const canvas = get().canvas;
+    if (!canvas) return;
+    const target = canvas.getActiveObject() as any;
+    if (!target || target.type !== 'image') return;
+    const preset = GRADE_PRESETS.find((p) => p.id === id);
+    if (!preset) return;
+    // Grades merge over the current state: only the grading keys reset, so
+    // the user's brightness/contrast/blur tweaks survive switching looks.
+    const state = readFilterState(target);
+    const defaults = defaultFilterState();
+    GRADING_KEYS.forEach((k) => {
+      (state as any)[k] = defaults[k];
+    });
+    applyFilterState(target, { ...state, ...preset.state });
+    canvas.renderAll();
+    set({
+      activeObject: Object.assign(Object.create(Object.getPrototypeOf(target)), target),
+    });
+    get().saveHistory();
+  },
   resetImageFilters: () => {
     const canvas = get().canvas;
     if (!canvas) return;
@@ -1922,8 +1964,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       );
 
       const outBlob: Blob = await remove(srcBlob);
-      const url = URL.createObjectURL(outBlob);
-      await (img as any).setSrc(url);
+      // Data URL (not a blob: URL) so the result survives save/reload.
+      await (img as any).setSrc(await blobToDataURL(outBlob));
       // Reset any filters (they'd apply on top of the transparency)
       img.filters = [];
       img.applyFilters?.();
