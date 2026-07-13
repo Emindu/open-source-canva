@@ -11,6 +11,12 @@ import {
   Eraser,
   Brush,
   Menu,
+  RectangleHorizontal,
+  SquareRoundCorner,
+  Circle,
+  Triangle,
+  Slash,
+  MoveUpRight,
 } from 'lucide-react';
 import { useEditorStore } from '../store/useEditorStore';
 import SignatureModal from './SignatureModal';
@@ -46,6 +52,18 @@ const ToolsPalette: React.FC = () => {
   const addStickyNote = useEditorStore((s) => s.addStickyNote);
 
   const activeTool: ActiveTool = drawingMode ? 'draw' : 'select';
+
+  // If the palette closes (Tools toggled off / another tab opened) while the
+  // brush is active, exit drawing mode — otherwise the canvas stays stuck in
+  // draw mode with no UI left to leave it.
+  useEffect(
+    () => () => {
+      if (useEditorStore.getState().drawingMode) {
+        useEditorStore.getState().setDrawingMode(false);
+      }
+    },
+    []
+  );
 
   // Close flyouts on outside click / Esc
   useEffect(() => {
@@ -230,42 +248,26 @@ const ToolsPalette: React.FC = () => {
         ))}
       </div>
 
-      {/* Flyout: Shapes */}
+      {/* Flyout: Shapes — lucide icons at the main pill's size/stroke */}
       {activeFlyout === 'shapes' && (
         <div style={pillStyle}>
           {toolBtn({
-            icon: (
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="6" width="18" height="12" rx="1" />
-              </svg>
-            ),
+            icon: <RectangleHorizontal size={22} strokeWidth={1.5} />,
             label: 'Rectangle',
             onClick: closeFlyoutAnd(addRect),
           })}
           {toolBtn({
-            icon: (
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="6" width="18" height="12" rx="4" />
-              </svg>
-            ),
+            icon: <SquareRoundCorner size={22} strokeWidth={1.5} />,
             label: 'Rounded rectangle',
             onClick: closeFlyoutAnd(addRoundedRect),
           })}
           {toolBtn({
-            icon: (
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="8" />
-              </svg>
-            ),
+            icon: <Circle size={22} strokeWidth={1.5} />,
             label: 'Circle',
             onClick: closeFlyoutAnd(addCircle),
           })}
           {toolBtn({
-            icon: (
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polygon points="12,4 21,20 3,20" />
-              </svg>
-            ),
+            icon: <Triangle size={22} strokeWidth={1.5} />,
             label: 'Triangle',
             onClick: closeFlyoutAnd(addTriangle),
           })}
@@ -276,21 +278,12 @@ const ToolsPalette: React.FC = () => {
       {activeFlyout === 'lines' && (
         <div style={pillStyle}>
           {toolBtn({
-            icon: (
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="4" y1="20" x2="20" y2="4" />
-              </svg>
-            ),
+            icon: <Slash size={22} strokeWidth={1.5} />,
             label: 'Line',
             onClick: closeFlyoutAnd(addLine),
           })}
           {toolBtn({
-            icon: (
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="4" y1="20" x2="20" y2="4" />
-                <polyline points="10 4 20 4 20 14" />
-              </svg>
-            ),
+            icon: <MoveUpRight size={22} strokeWidth={1.5} />,
             label: 'Arrow',
             onClick: closeFlyoutAnd(addArrow),
           })}
