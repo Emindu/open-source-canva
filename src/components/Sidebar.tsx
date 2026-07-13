@@ -191,13 +191,14 @@ const Sidebar: React.FC = () => {
       {/* Contextual tool panel */}
       {tab !== 'tools' && (
         <div
+          className="scrollable"
           style={{
             width: 'var(--tool-panel-width)',
             height: '100%',
             backgroundColor: 'var(--bg-panel-2)',
             borderRight: '1px solid var(--border)',
             flexShrink: 0,
-            overflow: 'hidden',
+            overflowX: 'hidden',
           }}
         >
           {tab === 'projects' && <ProjectsPanel />}
