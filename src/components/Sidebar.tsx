@@ -158,7 +158,9 @@ const UploadsPanel: React.FC = () => {
 };
 
 const Sidebar: React.FC = () => {
-  const [tab, setTab] = useState<Tab>('tools');
+  // No tab open by default; clicking a rail button toggles its panel, so the
+  // Tools palette only shows while Tools is actually pressed.
+  const [tab, setTab] = useState<Tab | null>(null);
 
   return (
     <div style={{ display: 'flex', height: '100%' }}>
@@ -179,7 +181,7 @@ const Sidebar: React.FC = () => {
             <button
               key={r.id}
               className={`rail-btn ${tab === r.id ? 'active' : ''}`}
-              onClick={() => setTab(r.id)}
+              onClick={() => setTab(tab === r.id ? null : r.id)}
             >
               <Icon size={20} />
               <span>{r.label}</span>
@@ -189,7 +191,7 @@ const Sidebar: React.FC = () => {
       </div>
 
       {/* Contextual tool panel */}
-      {tab !== 'tools' && (
+      {tab !== null && tab !== 'tools' && (
         <div
           className="scrollable"
           style={{
