@@ -6,6 +6,7 @@ import {
   Download,
   FileImage,
   FileJson,
+  FileText,
   ChevronDown,
   FolderOpen,
   Save,
@@ -22,7 +23,7 @@ import {
 import { useEditorStore } from '../store/useEditorStore';
 import { ACCENTS } from '../utils/accentTheme';
 import type { AccentName } from '../utils/accentTheme';
-import { exportJpg, exportJson, exportPng } from '../utils/exporters';
+import { exportJpg, exportJson, exportPdf, exportPng } from '../utils/exporters';
 import { openProjectFile, saveProjectFile, saveAsProjectFile } from '../utils/fileSystem';
 import { EXTRA_PROPS } from '../utils/projectSerialization';
 
@@ -70,12 +71,13 @@ const Topbar: React.FC = () => {
     return () => document.removeEventListener('mousedown', onClick);
   }, []);
 
-  const handleExport = (kind: 'png' | 'jpg' | 'json') => {
+  const handleExport = (kind: 'png' | 'jpg' | 'pdf' | 'json') => {
     if (!canvas) return;
     setExportOpen(false);
     const name = projectName.trim() || 'design';
     if (kind === 'png') exportPng(canvas, 2, name);
     else if (kind === 'jpg') exportJpg(canvas, 2, name);
+    else if (kind === 'pdf') exportPdf(canvas, 2, name);
     else exportJson(canvas, name);
   };
 
@@ -370,6 +372,7 @@ const Topbar: React.FC = () => {
             >
               <MenuItem icon={<FileImage size={14} />} label="PNG image" hint="Transparent, 2x" onClick={() => handleExport('png')} />
               <MenuItem icon={<FileImage size={14} />} label="JPG image" hint="High quality" onClick={() => handleExport('jpg')} />
+              <MenuItem icon={<FileText size={14} />} label="PDF document" hint="Print-ready" onClick={() => handleExport('pdf')} />
               <MenuItem icon={<FileJson size={14} />} label="Project JSON" hint="Reopen later" onClick={() => handleExport('json')} />
             </div>
           )}

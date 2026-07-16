@@ -68,7 +68,7 @@ interface EditorState {
   addBlob: (type: number) => void;
   addArrow: () => void;
   addLine: () => void;
-  addText: (variant?: 'heading' | 'subheading' | 'body' | 'display' | 'script' | 'comic' | 'sinhala-heading' | 'sinhala-body') => Promise<void>;
+  addText: (variant?: 'heading' | 'subheading' | 'body' | 'bullets' | 'display' | 'script' | 'comic' | 'sinhala-heading' | 'sinhala-body') => Promise<void>;
   addImage: (url: string) => void;
   addIconSvg: (svg: string) => Promise<void>;
   loadTemplate: (id: string) => Promise<void>;
@@ -635,6 +635,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       heading: { text: 'Add a heading', fontSize: 44, fontWeight: '700', width: 360, fontFamily: 'Inter' },
       subheading: { text: 'Add a subheading', fontSize: 28, fontWeight: '600', width: 320, fontFamily: 'Inter' },
       body: { text: 'Add a little bit of body text', fontSize: 18, fontWeight: '400', width: 280, fontFamily: 'Inter' },
+      bullets: {
+        text: '• First point\n• Second point\n• Third point',
+        fontSize: 18,
+        fontWeight: '400',
+        width: 300,
+        fontFamily: 'Inter',
+      },
       display: { text: 'BIG STATEMENT', fontSize: 56, fontWeight: '400', width: 460, fontFamily: 'Bebas Neue' },
       script: { text: 'Something lovely', fontSize: 44, fontWeight: '400', width: 400, fontFamily: 'Pacifico' },
       comic: { text: 'POW! WOW!', fontSize: 48, fontWeight: '400', width: 340, fontFamily: 'Bangers' },

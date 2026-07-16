@@ -283,6 +283,180 @@ export const TEMPLATES: TemplateDef[] = [
     },
   },
   {
+    id: 'resume-professional',
+    name: 'Professional Resume',
+    category: 'print',
+    width: 794,
+    height: 1123,
+    background: '#ffffff',
+    preview: { from: '#ffffff', to: '#f3f4f6', accents: ['#374151'] },
+    build: async (canvas, fab, styled) => {
+      await ensureFontLoaded('Inter');
+
+      const INK = '#1f2937';
+      const MUTED = '#4b5563';
+      const FAINT = '#6b7280';
+      const RULE = '#d1d5db';
+      const HAIR = '#e5e7eb';
+
+      const rule = (x1: number, y: number, x2: number, color = RULE) =>
+        new fab.Line([x1, y, x2, y], { stroke: color, strokeWidth: 1 });
+
+      const sectionTitle = (text: string, left: number, top: number, width: number) =>
+        new fab.Textbox(text, {
+          originX: 'left', originY: 'top',
+          left, top, width,
+          fontFamily: 'Inter', fontWeight: '600', fontSize: 15,
+          charSpacing: 320, fill: INK,
+        });
+
+      const objs: fabric.Object[] = [];
+
+      // ---- Header ----
+      objs.push(
+        heading(fab, 'ALEX\nMORGAN', {
+          left: 48, top: 56, width: 400,
+          fontSize: 42, lineHeight: 1.12, charSpacing: 120, fill: INK,
+        }),
+        new fab.Textbox('MARKETING MANAGER', {
+          originX: 'left', originY: 'top',
+          left: 48, top: 172, width: 400,
+          fontFamily: 'Inter', fontWeight: '500', fontSize: 13,
+          charSpacing: 460, fill: FAINT,
+        })
+      );
+
+      // Contact block (top right)
+      const contacts = [
+        '+1 234 456 7890',
+        'hello@example.com',
+        '123 Anywhere St., Any City',
+        'www.example.com',
+      ];
+      contacts.forEach((line, i) => {
+        const y = 66 + i * 26;
+        objs.push(
+          new fab.Circle({ originX: 'center', originY: 'center', left: 496, top: y + 7, radius: 3, fill: INK }),
+          body(fab, line, { left: 510, top: y, width: 240, fontSize: 12, fill: MUTED })
+        );
+      });
+
+      objs.push(rule(48, 214, 746));
+
+      // Column divider
+      objs.push(new fab.Line([470, 238, 470, 1070], { stroke: HAIR, strokeWidth: 1 }));
+
+      // ---- Left column: Profile ----
+      objs.push(
+        sectionTitle('PROFILE', 48, 240, 300),
+        rule(48, 268, 434, HAIR),
+        body(
+          fab,
+          'Results-driven marketing professional with 8+ years of experience leading brand strategy, digital campaigns, and cross-functional teams. Skilled at turning research into campaigns that grow revenue and strengthen brand recognition across markets.',
+          { left: 48, top: 282, width: 386, fontSize: 12, lineHeight: 1.55, fill: MUTED }
+        )
+      );
+
+      // ---- Left column: Work experience ----
+      objs.push(sectionTitle('WORK EXPERIENCE', 48, 412, 300), rule(48, 440, 434, HAIR));
+
+      const job = (
+        top: number,
+        years: string,
+        place: string,
+        role: string,
+        bullets: string
+      ) => {
+        objs.push(
+          new fab.Textbox(years, {
+            originX: 'left', originY: 'top', left: 48, top, width: 386,
+            fontFamily: 'Inter', fontWeight: '700', fontSize: 12.5, fill: INK,
+          }),
+          body(fab, place, { left: 48, top: top + 20, width: 386, fontSize: 11.5, fill: FAINT }),
+          new fab.Textbox(role, {
+            originX: 'left', originY: 'top', left: 48, top: top + 40, width: 386,
+            fontFamily: 'Inter', fontWeight: '600', fontSize: 12.5, fill: INK,
+          }),
+          body(fab, bullets, { left: 48, top: top + 62, width: 386, fontSize: 11.5, lineHeight: 1.5, fill: MUTED })
+        );
+      };
+
+      job(
+        456,
+        '2030 – PRESENT',
+        'Wardiere Inc. | 123 Anywhere St., Any City',
+        'Marketing Manager',
+        '• Create and manage the marketing budget, ensuring efficient allocation of resources and optimizing ROI.\n• Oversee market research to identify emerging trends, customer needs, and competitor strategies.\n• Develop and execute marketing strategies that align with company goals.\n• Monitor brand consistency across marketing channels and materials.'
+      );
+
+      job(
+        728,
+        '2027 – 2030',
+        'Studio Showde | 123 Anywhere St., Any City',
+        'Marketing Specialist',
+        '• Planned and ran multi-channel campaigns across social, email, and paid media.\n• Led, mentored, and managed a high-performing marketing team.\n• Reported campaign performance to leadership with actionable insights.'
+      );
+
+      // ---- Right column: Education ----
+      objs.push(sectionTitle('EDUCATION', 496, 240, 250), rule(496, 268, 746, HAIR));
+
+      const edu = (top: number, years: string, school: string, lines: string) => {
+        objs.push(
+          new fab.Textbox(years, {
+            originX: 'left', originY: 'top', left: 496, top, width: 250,
+            fontFamily: 'Inter', fontWeight: '700', fontSize: 12, fill: INK,
+          }),
+          new fab.Textbox(school, {
+            originX: 'left', originY: 'top', left: 496, top: top + 19, width: 250,
+            fontFamily: 'Inter', fontWeight: '600', fontSize: 11.5, charSpacing: 80, fill: MUTED,
+          }),
+          body(fab, lines, { left: 496, top: top + 38, width: 250, fontSize: 11.5, lineHeight: 1.5, fill: MUTED })
+        );
+      };
+
+      edu(282, '2029 – 2030', 'WARDIERE UNIVERSITY', '• Master of Strategic Marketing');
+      edu(364, '2025 – 2029', 'WARDIERE UNIVERSITY', '• Bachelor of Strategic Marketing\n• GPA: 3.8 / 4.0');
+
+      // ---- Right column: Skills ----
+      objs.push(
+        sectionTitle('SKILLS', 496, 486, 250),
+        rule(496, 514, 746, HAIR),
+        body(
+          fab,
+          '• Project Management\n• Public Relations\n• Teamwork\n• Time Management\n• Leadership\n• Effective Communication\n• Critical Thinking',
+          { left: 496, top: 528, width: 250, fontSize: 11.5, lineHeight: 1.65, fill: MUTED }
+        )
+      );
+
+      // ---- Right column: Reference ----
+      objs.push(
+        sectionTitle('REFERENCE', 496, 742, 250),
+        rule(496, 770, 746, HAIR),
+        new fab.Textbox('Harper Russo', {
+          originX: 'left', originY: 'top', left: 496, top: 784, width: 250,
+          fontFamily: 'Inter', fontWeight: '600', fontSize: 12.5, fill: INK,
+        }),
+        body(fab, 'Wardiere Inc. / CEO\nPhone: +1 234 456 7890\nEmail: hello@example.com', {
+          left: 496, top: 804, width: 250, fontSize: 11.5, lineHeight: 1.55, fill: MUTED,
+        })
+      );
+
+      // ---- Right column: Languages ----
+      objs.push(
+        sectionTitle('LANGUAGES', 496, 894, 250),
+        rule(496, 922, 746, HAIR),
+        body(fab, '• English\n• Spanish (basic)\n• German (basic)', {
+          left: 496, top: 936, width: 250, fontSize: 11.5, lineHeight: 1.65, fill: MUTED,
+        })
+      );
+
+      objs.forEach((o) => {
+        styled(o);
+        canvas.add(o);
+      });
+    },
+  },
+  {
     id: 'presentation-slide',
     name: 'Presentation Slide',
     category: 'web',
