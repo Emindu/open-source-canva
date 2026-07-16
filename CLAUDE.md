@@ -21,10 +21,11 @@ CanvaWasm is a fully client-side React 19 + TypeScript + Vite SPA. There is no b
 - **Zustand store** (`src/store/useEditorStore.ts`) is the single source of truth for `canvas` and `activeObject`, and exposes all mutating actions (`addRect`, `addCircle`, `addText`, `addImage`, `deleteSelected`, `updateSelectedProperty`). Components never touch the Fabric canvas directly for mutations — they call store actions. After every mutation the store calls `canvas.requestRenderAll()`.
 - **React re-render trick for property edits**: `updateSelectedProperty` mutates the Fabric object in place, then sets `activeObject` to a shallow clone (`Object.assign(Object.create(Object.getPrototypeOf(...)), ...)`) so React sees a new reference and re-renders the property panel. Be careful preserving this pattern when editing that function.
 
-### Component layout
+### Component layout ("Aurora" chrome)
 
-- `App` → `Layout` → (`Topbar` on top; `Sidebar` + `Workspace` below).
-- `Sidebar` — adds elements (rect/circle/text) and uploads images (via `URL.createObjectURL`).
+- `App` → `Layout` → (`Topbar` on top; below it `Workspace` is the only in-flow child — `Sidebar` and `PropertiesPanel` float over it as absolutely-positioned frosted cards).
+- Theming has two axes, both set as attributes on `<html>` by `App`: `data-theme` (`light` default / `dark`) and `data-accent` (`indigo` default / `violet` / `emerald` / `rose` / `cyan`). All chrome colors are CSS variables in `src/index.css`; the one accent hex needed outside CSS (Fabric selection handles, default shape fills) lives in `src/utils/accentTheme.ts` — keep the two in sync when adding accents.
+- `Sidebar` — renders the bottom dock (`.dock` / `.dock-btn`, icon-only with `sr-only` labels) and the floating left tool panel (`.tool-panel-float`); adds elements and uploads images (via `URL.createObjectURL`).
 - `Topbar` — dynamic property editor. Which controls appear is decided by inspecting `activeObject.type` (`image`, `text`/`i-text`/`textbox`, `rect`/`circle`/`polygon`/`path`). Also hosts the WASM filter buttons and Delete.
 - `Workspace` — mounts the Fabric canvas and installs the global `keydown` handler for Delete/Backspace. The handler intentionally short-circuits when the target is an `<input>`/`<textarea>` or when the active Fabric object is in text-edit mode (`isEditing`) — preserve that guard.
 

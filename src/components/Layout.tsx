@@ -16,9 +16,11 @@ const Layout: React.FC = () => {
       }}
     >
       <Topbar />
-      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
-        <Sidebar />
+      {/* Workspace is the only in-flow child; the dock, tool panel, and
+          properties panel float above it as absolutely-positioned cards. */}
+      <div style={{ display: 'flex', flex: 1, minHeight: 0, position: 'relative' }}>
         <Workspace />
+        <Sidebar />
         <PropertiesPanel />
       </div>
     </div>

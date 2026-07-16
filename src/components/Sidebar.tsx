@@ -163,46 +163,10 @@ const Sidebar: React.FC = () => {
   const [tab, setTab] = useState<Tab | null>(null);
 
   return (
-    <div style={{ display: 'flex', height: '100%' }}>
-      {/* Icon rail */}
-      <div
-        style={{
-          width: 'var(--rail-width)',
-          backgroundColor: 'var(--bg-panel)',
-          borderRight: '1px solid var(--border)',
-          display: 'flex',
-          flexDirection: 'column',
-          paddingTop: 8,
-        }}
-      >
-        {rails.map((r) => {
-          const Icon = r.icon;
-          return (
-            <button
-              key={r.id}
-              className={`rail-btn ${tab === r.id ? 'active' : ''}`}
-              onClick={() => setTab(tab === r.id ? null : r.id)}
-            >
-              <Icon size={20} />
-              <span>{r.label}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Contextual tool panel */}
+    <>
+      {/* Contextual tool panel: floating frosted card on the left */}
       {tab !== null && tab !== 'tools' && (
-        <div
-          className="scrollable"
-          style={{
-            width: 'var(--tool-panel-width)',
-            height: '100%',
-            backgroundColor: 'var(--bg-panel-2)',
-            borderRight: '1px solid var(--border)',
-            flexShrink: 0,
-            overflowX: 'hidden',
-          }}
-        >
+        <div className="scrollable glass-card tool-panel-float">
           {tab === 'projects' && <ProjectsPanel />}
           {tab === 'templates' && <TemplatesPanel />}
           {tab === 'shapes' && <ShapesPanel />}
@@ -215,10 +179,29 @@ const Sidebar: React.FC = () => {
           {tab === 'layers' && <LayersPanel />}
         </div>
       )}
-      
+
       {/* Floating Tools Palette rendered over the workspace when active */}
       {tab === 'tools' && <ToolsPalette />}
-    </div>
+
+      {/* Bottom dock */}
+      <nav className="dock glass-card" aria-label="Editor sections">
+        {rails.map((r) => {
+          const Icon = r.icon;
+          return (
+            <button
+              key={r.id}
+              className={`dock-btn ${tab === r.id ? 'active' : ''}`}
+              title={r.label}
+              aria-label={r.label}
+              onClick={() => setTab(tab === r.id ? null : r.id)}
+            >
+              <Icon size={21} />
+              <span className="sr-only">{r.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+    </>
   );
 };
 

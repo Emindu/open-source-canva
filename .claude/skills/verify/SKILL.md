@@ -21,7 +21,7 @@ const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromi
 
 ## Driving the editor
 
-- Upload an image: click `button.rail-btn:has-text("Uploads")`, then
+- Upload an image: click `button.dock-btn[title="Uploads"] (bottom dock)`, then
   `page.setInputFiles('input[type=file]', {name, mimeType, buffer})`. Generate
   test PNGs inside the page via an offscreen canvas → `toDataURL`.
 - Read object state from the Properties panel:

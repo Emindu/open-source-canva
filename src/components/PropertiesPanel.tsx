@@ -455,15 +455,7 @@ const PropertiesPanel: React.FC = () => {
   // temporary crop state.
   if (cropModeActive) {
     return (
-      <aside
-        className="scrollable"
-        style={{
-          width: 'var(--props-panel-width)',
-          height: '100%',
-          backgroundColor: 'var(--bg-panel)',
-          borderLeft: '1px solid var(--border)',
-        }}
-      >
+      <aside className="scrollable glass-card props-card">
         <div className="panel-section">
           <div className="panel-title">Crop image</div>
           <div style={{
@@ -497,15 +489,7 @@ const PropertiesPanel: React.FC = () => {
 
   if (!activeObject) {
     return (
-      <aside
-        className="scrollable"
-        style={{
-          width: 'var(--props-panel-width)',
-          height: '100%',
-          backgroundColor: 'var(--bg-panel)',
-          borderLeft: '1px solid var(--border)',
-        }}
-      >
+      <aside className="scrollable glass-card props-card">
         <CanvasEmptyState />
       </aside>
     );
@@ -544,15 +528,7 @@ const PropertiesPanel: React.FC = () => {
   );
 
   return (
-    <aside
-      className="scrollable"
-      style={{
-        width: 'var(--props-panel-width)',
-        height: '100%',
-        backgroundColor: 'var(--bg-panel)',
-        borderLeft: '1px solid var(--border)',
-      }}
-    >
+    <aside className="scrollable glass-card props-card">
       {/* Header */}
       <div className="panel-section">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
