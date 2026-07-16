@@ -6,6 +6,7 @@ import {
   Upload,
   Heading1,
   Heading2,
+  List,
   TextCursorInput,
   Layers,
   FolderHeart,
@@ -72,6 +73,10 @@ const TextPanel: React.FC = () => {
           <button className="tool-btn" onClick={() => addText('body')}>
             <TextCursorInput size={14} />
             <span style={{ fontSize: 12 }}>Add body text</span>
+          </button>
+          <button className="tool-btn" onClick={() => addText('bullets')}>
+            <List size={14} />
+            <span style={{ fontSize: 12 }}>Add a bullet list</span>
           </button>
         </div>
       </div>
