@@ -266,9 +266,8 @@ const Workspace: React.FC = () => {
     
     // Auto-fit calculation
     const container = containerRef.current;
-    const padding = 96; // 48px padding on each side
-    const availableWidth = container.clientWidth - padding;
-    const availableHeight = container.clientHeight - padding;
+    const availableWidth = container.clientWidth - 96; // 48px each side
+    const availableHeight = container.clientHeight - 156; // 48px top, 108px above the dock
     
     const zoomX = availableWidth / canvasSize.width;
     const zoomY = availableHeight / canvasSize.height;
@@ -297,7 +296,8 @@ const Workspace: React.FC = () => {
         alignItems: 'center',
         justifyContent: 'center',
         overflow: 'auto',
-        padding: '48px',
+        // extra bottom padding keeps the canvas clear of the floating dock
+        padding: '48px 48px 108px',
         position: 'relative',
       }}
     >
@@ -324,19 +324,17 @@ const Workspace: React.FC = () => {
       </div>
 
       <div
+        className="glass-card"
         style={{
           position: 'absolute',
           bottom: 16,
-          left: '50%',
-          transform: 'translateX(-50%)',
+          left: 16,
           display: 'flex',
           alignItems: 'center',
           gap: 4,
           padding: 4,
-          backgroundColor: 'var(--bg-panel)',
-          border: '1px solid var(--border)',
-          borderRadius: 'var(--radius-md)',
-          boxShadow: 'var(--shadow-md)',
+          borderRadius: 20,
+          zIndex: 15,
         }}
       >
         <button className="icon-btn" onClick={() => applyZoom(zoom - 0.1)} aria-label="Zoom out">

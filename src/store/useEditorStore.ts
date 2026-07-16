@@ -15,8 +15,9 @@ import { loadBrandKit, newLogoId, saveBrandKit } from '../utils/brandKit';
 import type { BrandKit, BrandLogo } from '../utils/brandKit';
 import { EXTRA_PROPS } from '../utils/projectSerialization';
 import { SHAPE_LIB } from '../utils/shapeLibrary';
+import { getAccentHex, loadAccentName, saveAccentName, setActiveAccent } from '../utils/accentTheme';
+import type { AccentName } from '../utils/accentTheme';
 
-const CORNER_COLOR = '#3b82f6';
 const CORNER_STROKE = '#ffffff';
 const MAX_HISTORY = 50;
 
@@ -163,6 +164,8 @@ interface EditorState {
   showRulers: boolean;
   snapEnabled: boolean;
   theme: 'dark' | 'light';
+  accentTheme: AccentName;
+  setAccentTheme: (name: AccentName) => void;
   toggleGrid: () => void;
   toggleRulers: () => void;
   toggleSnap: () => void;
@@ -177,11 +180,11 @@ interface EditorState {
 
 const applyCornerStyle = (obj: fabric.Object) => {
   obj.set({
-    cornerColor: CORNER_COLOR,
+    cornerColor: getAccentHex(),
     cornerStrokeColor: CORNER_STROKE,
     cornerStyle: 'circle',
     transparentCorners: false,
-    borderColor: CORNER_COLOR,
+    borderColor: getAccentHex(),
     borderScaleFactor: 1.5,
     padding: 4,
   });
@@ -334,7 +337,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   showGrid: false,
   showRulers: false,
   snapEnabled: true,
-  theme: 'dark' as 'dark' | 'light',
+  theme: (() => {
+    try {
+      const stored = localStorage.getItem('canvawasm.theme');
+      if (stored === 'dark' || stored === 'light') return stored;
+    } catch { /* storage unavailable */ }
+    return 'light';
+  })() as 'dark' | 'light',
+  accentTheme: loadAccentName(),
   cropModeActive: false,
   bgRemovalBusy: false,
   drawingMode: false,
@@ -349,7 +359,25 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   toggleGrid: () => set((s) => ({ showGrid: !s.showGrid })),
   toggleRulers: () => set((s) => ({ showRulers: !s.showRulers })),
   toggleSnap: () => set((s) => ({ snapEnabled: !s.snapEnabled })),
-  toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
+  toggleTheme: () =>
+    set((s) => {
+      const theme = s.theme === 'dark' ? 'light' : 'dark';
+      try {
+        localStorage.setItem('canvawasm.theme', theme);
+      } catch { /* storage unavailable */ }
+      return { theme };
+    }),
+  setAccentTheme: (name) => {
+    setActiveAccent(name);
+    saveAccentName(name);
+    // Restyle existing objects so selection handles match the new accent.
+    const canvas = get().canvas;
+    if (canvas) {
+      canvas.getObjects().forEach((o) => applyCornerStyle(o));
+      canvas.requestRenderAll();
+    }
+    set({ accentTheme: name });
+  },
 
   setCanvas: (canvas) => set({ canvas }),
   setActiveObject: (activeObject) => set({ activeObject }),
@@ -390,7 +418,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const rect = new fabric.Rect({
       left: 120,
       top: 120,
-      fill: '#3b82f6',
+      fill: getAccentHex(),
       width: 160,
       height: 120,
       rx: 8,
@@ -425,7 +453,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const rect = new fabric.Rect({
       left: 120,
       top: 120,
-      fill: '#3b82f6',
+      fill: getAccentHex(),
       width: 160,
       height: 120,
       rx: 28,
@@ -561,7 +589,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (!canvas) return;
     const path =
       'M20,0 L140,0 Q160,0 160,20 L160,80 Q160,100 140,100 L60,100 L40,130 L48,100 L20,100 Q0,100 0,80 L0,20 Q0,0 20,0 Z';
-    const p = new fabric.Path(path, { left: 200, top: 150, fill: '#3b82f6' });
+    const p = new fabric.Path(path, { left: 200, top: 150, fill: getAccentHex() });
     applyCornerStyle(p);
     canvas.add(p);
     canvas.setActiveObject(p);
@@ -579,7 +607,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       { x: 60, y: 60 },
       { x: 0, y: 60 },
     ];
-    const p = new fabric.Polygon(pts, { left: 200, top: 200, fill: '#3b82f6' });
+    const p = new fabric.Polygon(pts, { left: 200, top: 200, fill: getAccentHex() });
     applyCornerStyle(p);
     canvas.add(p);
     canvas.setActiveObject(p);
@@ -591,7 +619,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const line = new fabric.Line([0, 0, 220, 0], {
       left: 200,
       top: 240,
-      stroke: '#3b82f6',
+      stroke: getAccentHex(),
       strokeWidth: 4,
       strokeLineCap: 'round',
     });
@@ -1390,7 +1418,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     });
 
     const isHex = (v: unknown): v is string => typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v);
-    const currentFill = isHex(target.fill) ? target.fill : isHex(target.origFill) ? target.origFill : '#3b82f6';
+    const currentFill = isHex(target.fill) ? target.fill : isHex(target.origFill) ? target.origFill : getAccentHex();
 
     // Presets that overwrite the fill (neon/outline/hollow) remember the
     // original solid color so 'none' can restore it instead of leaving the

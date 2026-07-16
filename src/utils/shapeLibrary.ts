@@ -21,7 +21,9 @@ export interface ShapeEntry {
 
 /* -------------------- helpers -------------------- */
 
-const ACCENT = '#3b82f6';
+import { getAccentHex } from './accentTheme';
+// Read at build() time so new shapes always take the currently selected accent.
+const ACCENT = () => getAccentHex();
 const LEFT = 200;
 const TOP = 200;
 
@@ -59,7 +61,7 @@ const starPoints = (points: number, outerR: number, innerR: number) => {
 };
 
 const withStyle = <T extends fabric.Object>(obj: T, extra?: Partial<fabric.Object>): T => {
-  obj.set({ fill: ACCENT, left: LEFT, top: TOP, ...(extra as any) });
+  obj.set({ fill: ACCENT(), left: LEFT, top: TOP, ...(extra as any) });
   return obj;
 };
 
@@ -126,7 +128,7 @@ export const SHAPE_LIB: ShapeEntry[] = [
     preview: svg(el('line', { x1: 3, y1: 12, x2: 21, y2: 12, strokeWidth: 2 })),
     build: () =>
       withStyle(
-        new fabric.Line([0, 0, 220, 0], { stroke: ACCENT, strokeWidth: 4, strokeLineCap: 'round' } as any),
+        new fabric.Line([0, 0, 220, 0], { stroke: ACCENT(), strokeWidth: 4, strokeLineCap: 'round' } as any),
         { fill: '' }
       ),
   },
@@ -136,7 +138,7 @@ export const SHAPE_LIB: ShapeEntry[] = [
     build: () =>
       withStyle(
         new fabric.Line([0, 0, 220, 0], {
-          stroke: ACCENT, strokeWidth: 4, strokeDashArray: [10, 6], strokeLineCap: 'butt',
+          stroke: ACCENT(), strokeWidth: 4, strokeDashArray: [10, 6], strokeLineCap: 'butt',
         } as any),
         { fill: '' }
       ),
@@ -147,7 +149,7 @@ export const SHAPE_LIB: ShapeEntry[] = [
     build: () =>
       withStyle(
         new fabric.Line([0, 0, 220, 0], {
-          stroke: ACCENT, strokeWidth: 4, strokeDashArray: [2, 8], strokeLineCap: 'round',
+          stroke: ACCENT(), strokeWidth: 4, strokeDashArray: [2, 8], strokeLineCap: 'round',
         } as any),
         { fill: '' }
       ),
@@ -157,7 +159,7 @@ export const SHAPE_LIB: ShapeEntry[] = [
     preview: svg(el('path', { d: 'M 3 16 Q 12 4 21 16' })),
     build: () =>
       withStyle(
-        new fabric.Path('M 0 60 Q 100 -20 200 60', { fill: '', stroke: ACCENT, strokeWidth: 4 } as any)
+        new fabric.Path('M 0 60 Q 100 -20 200 60', { fill: '', stroke: ACCENT(), strokeWidth: 4 } as any)
       ),
   },
   {
@@ -180,7 +182,7 @@ export const SHAPE_LIB: ShapeEntry[] = [
     build: () =>
       withStyle(
         new fabric.Path('M 0 20 L 180 20 M 160 0 L 200 20 L 160 40', {
-          fill: '', stroke: ACCENT, strokeWidth: 4, strokeLineJoin: 'round',
+          fill: '', stroke: ACCENT(), strokeWidth: 4, strokeLineJoin: 'round',
         } as any)
       ),
   },
@@ -193,7 +195,7 @@ export const SHAPE_LIB: ShapeEntry[] = [
       withStyle(
         new fabric.Path(
           'M 0 20 L 200 20 M 0 20 L 30 0 M 0 20 L 30 40 M 200 20 L 170 0 M 200 20 L 170 40',
-          { fill: '', stroke: ACCENT, strokeWidth: 4, strokeLineJoin: 'round' } as any
+          { fill: '', stroke: ACCENT(), strokeWidth: 4, strokeLineJoin: 'round' } as any
         )
       ),
   },
@@ -203,7 +205,7 @@ export const SHAPE_LIB: ShapeEntry[] = [
     build: () =>
       withStyle(
         new fabric.Path('M 0 120 Q 100 -20 200 120 L 175 100 M 200 120 L 175 110', {
-          fill: '', stroke: ACCENT, strokeWidth: 4, strokeLineJoin: 'round',
+          fill: '', stroke: ACCENT(), strokeWidth: 4, strokeLineJoin: 'round',
         } as any)
       ),
   },
@@ -215,9 +217,9 @@ export const SHAPE_LIB: ShapeEntry[] = [
       el('circle', { cx: 20, cy: 12, r: 1.5, fill: 'currentColor', stroke: 'none' }),
     ]),
     build: () => {
-      const line = new fabric.Line([10, 20, 190, 20], { stroke: ACCENT, strokeWidth: 4 } as any);
-      const a = new fabric.Circle({ radius: 8, left: 0, top: 12, fill: ACCENT });
-      const b = new fabric.Circle({ radius: 8, left: 184, top: 12, fill: ACCENT });
+      const line = new fabric.Line([10, 20, 190, 20], { stroke: ACCENT(), strokeWidth: 4 } as any);
+      const a = new fabric.Circle({ radius: 8, left: 0, top: 12, fill: ACCENT() });
+      const b = new fabric.Circle({ radius: 8, left: 184, top: 12, fill: ACCENT() });
       return withStyle(new fabric.Group([line, a, b] as any), { fill: '' });
     },
   },

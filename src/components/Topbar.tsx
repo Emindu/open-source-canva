@@ -17,8 +17,11 @@ import {
   Check,
   Moon,
   Sun,
+  Palette,
 } from 'lucide-react';
 import { useEditorStore } from '../store/useEditorStore';
+import { ACCENTS } from '../utils/accentTheme';
+import type { AccentName } from '../utils/accentTheme';
 import { exportJpg, exportJson, exportPng } from '../utils/exporters';
 import { openProjectFile, saveProjectFile, saveAsProjectFile } from '../utils/fileSystem';
 import { EXTRA_PROPS } from '../utils/projectSerialization';
@@ -324,6 +327,7 @@ const Topbar: React.FC = () => {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 240, justifyContent: 'flex-end' }}>
+        <ThemeMenu />
         <button className="icon-btn" onClick={toggleTheme} aria-label="Toggle theme" title="Toggle theme">
           {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
         </button>
@@ -372,6 +376,78 @@ const Topbar: React.FC = () => {
         </div>
       </div>
     </header>
+  );
+};
+
+/** Accent color picker: five theme swatches in a small dropdown. */
+const ThemeMenu: React.FC = () => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const accentTheme = useEditorStore((s) => s.accentTheme);
+  const setAccentTheme = useEditorStore((s) => s.setAccentTheme);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [open]);
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        className="icon-btn"
+        onClick={() => setOpen((v) => !v)}
+        aria-label="Color theme"
+        title="Color theme"
+      >
+        <Palette size={16} />
+      </button>
+      {open && (
+        <div
+          className="glass-card"
+          style={{
+            position: 'absolute',
+            right: 0,
+            top: 'calc(100% + 6px)',
+            padding: 10,
+            borderRadius: 'var(--radius-md)',
+            display: 'flex',
+            gap: 8,
+            zIndex: 30,
+          }}
+        >
+          {(Object.keys(ACCENTS) as AccentName[]).map((name) => {
+            const active = name === accentTheme;
+            return (
+              <button
+                key={name}
+                onClick={() => setAccentTheme(name)}
+                title={ACCENTS[name].label}
+                aria-label={`${ACCENTS[name].label} theme`}
+                style={{
+                  width: 26,
+                  height: 26,
+                  borderRadius: 13,
+                  padding: 0,
+                  backgroundColor: ACCENTS[name].hex,
+                  border: '2px solid var(--bg-panel)',
+                  boxShadow: active ? '0 0 0 2px var(--accent)' : '0 0 0 1px var(--border-strong)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#fff',
+                }}
+              >
+                {active && <Check size={13} />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 };
 

@@ -168,13 +168,15 @@ const ToolsPalette: React.FC = () => {
   };
 
   const pillStyle: React.CSSProperties = {
-    backgroundColor: 'var(--bg-panel)',
+    backgroundColor: 'var(--glass-bg)',
+    backdropFilter: 'blur(18px) saturate(1.4)',
+    WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
     borderRadius: 32,
     padding: '16px 8px',
     display: 'flex',
     flexDirection: 'column',
     gap: 12,
-    boxShadow: 'var(--shadow-canvas)',
+    boxShadow: 'var(--shadow-lg)',
     border: '1px solid var(--border)',
   };
 
@@ -212,7 +214,7 @@ const ToolsPalette: React.FC = () => {
         // offset below the topbar and stay under its z-index so the palette
         // never covers the File/View menus.
         top: 'calc(var(--topbar-height) + 16px)',
-        left: 'calc(var(--rail-width) + 20px)',
+        left: 16,
         zIndex: 10,
         display: 'flex',
         gap: 12,
