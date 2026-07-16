@@ -1,39 +1,35 @@
 :root {
-  /* Accent — marigold, the proofing-tape gold of Colombo poster walls */
-  --accent: #efa63c;
-  --accent-hover: #f8b851;
-  --accent-soft: rgba(239, 166, 60, 0.14);
-  --accent-strong: rgba(239, 166, 60, 0.36);
-  --accent-contrast: #191504;
+  /* Accent (brand) */
+  --accent: #3b82f6;
+  --accent-hover: #5c97f8;
+  --accent-soft: rgba(59, 130, 246, 0.14);
+  --accent-strong: rgba(59, 130, 246, 0.34);
+  --accent-contrast: #ffffff;
 
-  /* Surfaces (dark) — warm press-iron chrome, cutting-mat workspace */
-  --bg-app: #161511;
-  --bg-workspace: #1c221d;
-  --bg-panel: #1c1b16;
-  --bg-panel-2: #22211b;
-  --bg-elevated: #2a2922;
-  --bg-hover: #2e2d25;
-  --bg-active: #37362c;
+  /* Surfaces (dark) — pure neutral grays */
+  --bg-app: #101012;
+  --bg-workspace: #17171a;
+  --bg-panel: #1a1a1e;
+  --bg-panel-2: #202024;
+  --bg-elevated: #26262b;
+  --bg-hover: #2a2a30;
+  --bg-active: #33333a;
 
   /* Text */
-  --text-primary: #f3f1e8;
-  --text-secondary: #aba99a;
-  --text-tertiary: #797768;
-  --text-inverse: #161511;
+  --text-primary: #f4f4f5;
+  --text-secondary: #a1a1aa;
+  --text-tertiary: #71717a;
+  --text-inverse: #101012;
 
   /* Borders */
-  --border: #2e2d25;
-  --border-strong: #3e3c31;
+  --border: #2a2a30;
+  --border-strong: #3a3a42;
   --border-focus: var(--accent);
 
   /* Semantic */
-  --danger: #e5533c;
-  --danger-hover: #f0684f;
-  --success: #55a671;
-
-  /* Cutting-mat grid lines */
-  --grid-line: rgba(214, 232, 217, 0.05);
-  --grid-line-major: rgba(214, 232, 217, 0.1);
+  --danger: #ef4444;
+  --danger-hover: #f87171;
+  --success: #22c55e;
 
   /* Layout */
   --rail-width: 68px;
@@ -42,25 +38,20 @@
   --topbar-height: 52px;
   --statusbar-height: 36px;
 
-  /* Radii — crisp, instrumental */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 10px;
-  --radius-xl: 14px;
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
 
   /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(10, 9, 5, 0.35);
-  --shadow-md: 0 4px 12px -2px rgba(10, 9, 5, 0.45);
-  --shadow-lg: 0 20px 40px -12px rgba(10, 9, 5, 0.65);
-  --shadow-canvas: 0 14px 34px -8px rgba(8, 10, 8, 0.6), 0 0 0 1px rgba(243, 241, 232, 0.05);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 20px 40px -12px rgba(0, 0, 0, 0.6);
+  --shadow-canvas: 0 12px 32px -6px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.04);
 
-  /* Type roles */
-  --font-ui: 'Work Sans', 'Noto Sans Sinhala', system-ui, -apple-system, BlinkMacSystemFont,
+  font-family: 'Inter', 'Noto Sans Sinhala', system-ui, -apple-system, BlinkMacSystemFont,
     'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --font-display: 'Stick No Bills', 'Anek Sinhala', 'Noto Sans Sinhala', sans-serif;
-  --font-mono: 'IBM Plex Mono', 'Space Mono', ui-monospace, monospace;
-
-  font-family: var(--font-ui);
   font-size: 14px;
   color: var(--text-primary);
   background-color: var(--bg-app);
@@ -70,40 +61,36 @@
 }
 
 :root[data-theme='light'] {
-  --accent: #925f00;
-  --accent-hover: #7a4f00;
-  --accent-soft: rgba(146, 95, 0, 0.12);
-  --accent-strong: rgba(146, 95, 0, 0.3);
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-soft: rgba(37, 99, 235, 0.1);
+  --accent-strong: rgba(37, 99, 235, 0.28);
   --accent-contrast: #ffffff;
 
-  /* Surfaces (light) — proof paper on a pale mat */
-  --bg-app: #eceae1;
-  --bg-workspace: #dde1d8;
-  --bg-panel: #f7f5ee;
-  --bg-panel-2: #efede4;
+  --bg-app: #f4f4f5;
+  --bg-workspace: #e4e4e7;
+  --bg-panel: #ffffff;
+  --bg-panel-2: #f4f4f5;
   --bg-elevated: #ffffff;
-  --bg-hover: #e8e5da;
-  --bg-active: #dddacb;
+  --bg-hover: #f0f0f2;
+  --bg-active: #e4e4e7;
 
-  --text-primary: #24231b;
-  --text-secondary: #5c5b4e;
-  --text-tertiary: #6e6d60;
+  --text-primary: #18181b;
+  --text-secondary: #52525b;
+  --text-tertiary: #6b7280;
   --text-inverse: #ffffff;
 
-  --border: #dbd8ca;
-  --border-strong: #c2bfad;
+  --border: #e4e4e7;
+  --border-strong: #d4d4d8;
 
-  --danger: #c23a25;
-  --danger-hover: #a72e1b;
-  --success: #2f7d51;
+  --danger: #dc2626;
+  --danger-hover: #b91c1c;
+  --success: #16a34a;
 
-  --grid-line: rgba(38, 54, 42, 0.06);
-  --grid-line-major: rgba(38, 54, 42, 0.12);
-
-  --shadow-sm: 0 1px 2px 0 rgba(48, 46, 33, 0.08);
-  --shadow-md: 0 4px 12px -2px rgba(48, 46, 33, 0.1);
-  --shadow-lg: 0 20px 40px -12px rgba(48, 46, 33, 0.18);
-  --shadow-canvas: 0 14px 34px -8px rgba(48, 46, 33, 0.16), 0 0 0 1px rgba(36, 35, 27, 0.06);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 20px 40px -12px rgba(0, 0, 0, 0.15);
+  --shadow-canvas: 0 12px 32px -6px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.05);
 
   color-scheme: light;
 }
@@ -163,11 +150,6 @@ a {
 
 /* --- Reusable UI primitives --- */
 
-.mono {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-}
-
 .icon-btn {
   display: inline-flex;
   align-items: center;
@@ -215,7 +197,7 @@ a {
   left: 0;
   top: 10px;
   bottom: 10px;
-  width: 3px;
+  width: 2px;
   border-radius: 0 2px 2px 0;
   background-color: var(--accent);
 }
@@ -259,7 +241,6 @@ a {
   color: var(--text-primary);
 }
 
-/* Primary action reads as a strip of proofing tape: marigold with ink text */
 .primary-btn {
   display: inline-flex;
   align-items: center;
@@ -269,7 +250,7 @@ a {
   background-color: var(--accent);
   color: var(--accent-contrast);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   transition: background-color 0.12s ease;
 }
 .primary-btn:hover {
@@ -284,13 +265,13 @@ a {
   border-radius: var(--radius-sm);
   background-color: transparent;
   color: var(--danger);
-  border: 1px solid rgba(229, 83, 60, 0.32);
+  border: 1px solid rgba(239, 68, 68, 0.28);
   font-size: 13px;
   font-weight: 500;
   transition: background-color 0.12s ease, color 0.12s ease;
 }
 .danger-btn:hover {
-  background-color: rgba(229, 83, 60, 0.14);
+  background-color: rgba(239, 68, 68, 0.14);
   color: var(--danger-hover);
 }
 
@@ -299,12 +280,10 @@ a {
   flex-direction: column;
   gap: 6px;
 }
-/* Spec-sheet labels: small mono caps, like a press job ticket */
 .field-label {
-  font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-tertiary);
 }
@@ -357,25 +336,13 @@ a {
 .panel-section:last-child {
   border-bottom: none;
 }
-/* Section headers set in the poster face, with a marigold registration tick */
 .panel-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-family: var(--font-display);
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: 0.13em;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-secondary);
+  color: var(--text-tertiary);
   margin-bottom: 12px;
-}
-.panel-title::before {
-  content: '';
-  flex-shrink: 0;
-  width: 10px;
-  height: 2px;
-  background-color: var(--accent);
 }
 
 /* Custom scrollbars */
@@ -408,20 +375,7 @@ a {
   animation: spin 1s linear infinite;
 }
 
-/* Workspace cutting-mat: fine grid with a heavier rule every fifth line */
+/* Workspace: flat, quiet surface so the canvas carries the focus */
 .workspace-bg {
   background-color: var(--bg-workspace);
-  background-image:
-    linear-gradient(var(--grid-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
-    linear-gradient(var(--grid-line-major) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid-line-major) 1px, transparent 1px);
-  background-size: 24px 24px, 24px 24px, 120px 120px, 120px 120px;
-}
-
-/* Printer's crop marks around the canvas — the sheet is a live proof */
-.crop-mark {
-  position: absolute;
-  background-color: var(--text-tertiary);
-  pointer-events: none;
 }

@@ -15,7 +15,7 @@ const BrandKitPanel: React.FC = () => {
   const activeObject = useEditorStore((s) => s.activeObject);
   const updateSelectedProperty = useEditorStore((s) => s.updateSelectedProperty);
 
-  const [newColor, setNewColor] = useState('#efa63c');
+  const [newColor, setNewColor] = useState('#3b82f6');
   const [newFont, setNewFont] = useState<string>('Inter');
 
   const applyColorToSelection = (color: string) => {
