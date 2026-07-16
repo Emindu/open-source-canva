@@ -21,7 +21,7 @@ export interface ShapeEntry {
 
 /* -------------------- helpers -------------------- */
 
-const ACCENT = '#7c5cff';
+const ACCENT = '#efa63c';
 const LEFT = 200;
 const TOP = 200;
 

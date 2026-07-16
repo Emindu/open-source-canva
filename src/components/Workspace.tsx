@@ -10,6 +10,31 @@ const MIN_ZOOM = 0.2;
 const MAX_ZOOM = 4;
 const AUTOSAVE_DEBOUNCE = 600;
 
+// Eight short offset lines, two per corner, like registration marks on a press proof.
+const CROP_GAP = 6;
+const CROP_LEN = 12;
+
+const CropMarks: React.FC = () => {
+  const offset = CROP_GAP + CROP_LEN;
+  const marks: React.CSSProperties[] = [
+    { top: 0, left: -offset, width: CROP_LEN, height: 1 },
+    { top: -offset, left: 0, width: 1, height: CROP_LEN },
+    { top: 0, right: -offset, width: CROP_LEN, height: 1 },
+    { top: -offset, right: 0, width: 1, height: CROP_LEN },
+    { bottom: 0, left: -offset, width: CROP_LEN, height: 1 },
+    { bottom: -offset, left: 0, width: 1, height: CROP_LEN },
+    { bottom: 0, right: -offset, width: CROP_LEN, height: 1 },
+    { bottom: -offset, right: 0, width: 1, height: CROP_LEN },
+  ];
+  return (
+    <>
+      {marks.map((style, i) => (
+        <div key={i} className="crop-mark" style={style} />
+      ))}
+    </>
+  );
+};
+
 const Workspace: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -304,13 +329,33 @@ const Workspace: React.FC = () => {
       <div style={{ position: 'relative', display: 'inline-block' }}>
         <div
           style={{
-            borderRadius: 'var(--radius-md)',
             overflow: 'hidden',
             boxShadow: 'var(--shadow-canvas)',
             background: '#fff',
           }}
         >
           <canvas ref={canvasRef} />
+        </div>
+
+        {/* Printer's crop marks: the canvas is a proof sheet on the mat */}
+        <CropMarks />
+        <div
+          className="mono"
+          style={{
+            position: 'absolute',
+            top: '100%',
+            left: 0,
+            marginTop: 10,
+            fontSize: 10,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            color: 'var(--text-tertiary)',
+            whiteSpace: 'nowrap',
+            pointerEvents: 'none',
+            userSelect: 'none',
+          }}
+        >
+          Proof · {canvasSize.width} × {canvasSize.height} px
         </div>
         <div style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}>
           <Rulers
@@ -343,11 +388,11 @@ const Workspace: React.FC = () => {
           <ZoomOut size={16} />
         </button>
         <div
+          className="mono"
           style={{
             minWidth: 56,
             textAlign: 'center',
-            fontSize: 12,
-            fontVariantNumeric: 'tabular-nums',
+            fontSize: 11,
             color: 'var(--text-secondary)',
           }}
         >
