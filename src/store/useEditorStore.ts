@@ -17,6 +17,8 @@ import { EXTRA_PROPS } from '../utils/projectSerialization';
 import { SHAPE_LIB } from '../utils/shapeLibrary';
 import { getAccentHex, loadAccentName, saveAccentName, setActiveAccent } from '../utils/accentTheme';
 import type { AccentName } from '../utils/accentTheme';
+import { documentCurrent, documentPages } from '../utils/document';
+import type { DocumentData } from '../utils/document';
 
 const CORNER_STROKE = '#ffffff';
 const MAX_HISTORY = 50;
@@ -166,6 +168,18 @@ interface EditorState {
   theme: 'dark' | 'light';
   accentTheme: AccentName;
   setAccentTheme: (name: AccentName) => void;
+  showMargins: boolean;
+  toggleMargins: () => void;
+
+  /* Multi-page document */
+  pages: (Record<string, unknown> | null)[];
+  currentPage: number;
+  serializeDocument: () => DocumentData;
+  loadDocument: (data: unknown) => Promise<void>;
+  goToPage: (i: number) => Promise<void>;
+  addPage: () => Promise<void>;
+  deletePage: () => Promise<void>;
+  resetDocument: () => void;
   toggleGrid: () => void;
   toggleRulers: () => void;
   toggleSnap: () => void;
@@ -177,6 +191,17 @@ interface EditorState {
   initHistory: () => void;
   clearHistory: () => void;
 }
+
+/** Load one page's serialized JSON into the canvas; null means a blank white page. */
+const loadPageIntoCanvas = async (canvas: fabric.Canvas, data: Record<string, unknown> | null | undefined) => {
+  if (data) {
+    await canvas.loadFromJSON(data);
+  } else {
+    canvas.clear();
+    canvas.backgroundColor = '#ffffff';
+  }
+  canvas.renderAll();
+};
 
 const applyCornerStyle = (obj: fabric.Object) => {
   obj.set({
@@ -345,6 +370,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     return 'light';
   })() as 'dark' | 'light',
   accentTheme: loadAccentName(),
+  showMargins: false,
+  pages: [null] as (Record<string, unknown> | null)[],
+  currentPage: 0,
   cropModeActive: false,
   bgRemovalBusy: false,
   drawingMode: false,
@@ -367,6 +395,58 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       } catch { /* storage unavailable */ }
       return { theme };
     }),
+  toggleMargins: () => set((s) => ({ showMargins: !s.showMargins })),
+
+  /* ---------- Multi-page document ---------- */
+  serializeDocument: () => {
+    const { canvas, pages, currentPage } = get();
+    const snapshot = pages.slice();
+    if (canvas) snapshot[currentPage] = canvas.toObject(EXTRA_PROPS);
+    return { __doc: 'canvawasm/v2', pages: snapshot, current: currentPage };
+  },
+  loadDocument: async (data) => {
+    const canvas = get().canvas;
+    if (!canvas) return;
+    const pages = documentPages(data).slice();
+    const current = documentCurrent(data);
+    await loadPageIntoCanvas(canvas, pages[current]);
+    set({ pages, currentPage: current, activeObject: null });
+  },
+  goToPage: async (i) => {
+    const { canvas, pages, currentPage } = get();
+    if (!canvas || i === currentPage || i < 0 || i >= pages.length) return;
+    const snapshot = pages.slice();
+    snapshot[currentPage] = canvas.toObject(EXTRA_PROPS);
+    await loadPageIntoCanvas(canvas, snapshot[i]);
+    set({ pages: snapshot, currentPage: i, activeObject: null });
+    // Undo history is per-page: switching pages starts a fresh baseline.
+    get().clearHistory();
+    get().initHistory();
+    get().autosave();
+  },
+  addPage: async () => {
+    const { canvas, pages, currentPage } = get();
+    if (!canvas) return;
+    const snapshot = pages.slice();
+    snapshot[currentPage] = canvas.toObject(EXTRA_PROPS);
+    snapshot.push(null);
+    set({ pages: snapshot });
+    await get().goToPage(snapshot.length - 1);
+  },
+  deletePage: async () => {
+    const { canvas, pages, currentPage } = get();
+    if (!canvas || pages.length <= 1) return;
+    const snapshot = pages.slice();
+    snapshot.splice(currentPage, 1);
+    const next = Math.min(currentPage, snapshot.length - 1);
+    await loadPageIntoCanvas(canvas, snapshot[next]);
+    set({ pages: snapshot, currentPage: next, activeObject: null });
+    get().clearHistory();
+    get().initHistory();
+    get().autosave();
+  },
+  resetDocument: () => set({ pages: [null], currentPage: 0 }),
+
   setAccentTheme: (name) => {
     setActiveAccent(name);
     saveAccentName(name);
@@ -394,7 +474,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     // any prior crop the user had already applied.
     if (cropModeActive) return;
     try {
-      const data = canvas.toObject(EXTRA_PROPS);
+      const data = get().serializeDocument();
       const thumbnail = canvas.toDataURL({ format: 'jpeg', quality: 0.5, multiplier: 0.2 });
       const { saveProjectDb } = await import('../utils/db');
       await saveProjectDb({

@@ -12,6 +12,7 @@ import {
   Save,
   FilePlus,
   SaveAll,
+  Frame,
   Grid3x3,
   Ruler,
   Magnet,
@@ -25,7 +26,6 @@ import { ACCENTS } from '../utils/accentTheme';
 import type { AccentName } from '../utils/accentTheme';
 import { exportJpg, exportJson, exportPdf, exportPng } from '../utils/exporters';
 import { openProjectFile, saveProjectFile, saveAsProjectFile } from '../utils/fileSystem';
-import { EXTRA_PROPS } from '../utils/projectSerialization';
 
 const Topbar: React.FC = () => {
   const [exportOpen, setExportOpen] = useState(false);
@@ -42,6 +42,8 @@ const Topbar: React.FC = () => {
   const toggleGrid = useEditorStore((s) => s.toggleGrid);
   const toggleRulers = useEditorStore((s) => s.toggleRulers);
   const toggleSnap = useEditorStore((s) => s.toggleSnap);
+  const showMargins = useEditorStore((s) => s.showMargins);
+  const toggleMargins = useEditorStore((s) => s.toggleMargins);
   const theme = useEditorStore((s) => s.theme);
   const toggleTheme = useEditorStore((s) => s.toggleTheme);
 
@@ -77,8 +79,8 @@ const Topbar: React.FC = () => {
     const name = projectName.trim() || 'design';
     if (kind === 'png') exportPng(canvas, 2, name);
     else if (kind === 'jpg') exportJpg(canvas, 2, name);
-    else if (kind === 'pdf') exportPdf(canvas, 2, name);
-    else exportJson(canvas, name);
+    else if (kind === 'pdf') exportPdf(useEditorStore.getState().serializeDocument(), canvas, 2, name);
+    else exportJson(useEditorStore.getState().serializeDocument(), name);
   };
 
   const handleNewProject = () => {
@@ -86,6 +88,7 @@ const Topbar: React.FC = () => {
     setFileMenuOpen(false);
     canvas.clear();
     canvas.backgroundColor = '#ffffff';
+    useEditorStore.getState().resetDocument();
     useEditorStore.getState().clearHistory();
     useEditorStore.getState().initHistory();
     setFileHandle(null);
@@ -99,8 +102,7 @@ const Topbar: React.FC = () => {
     setFileMenuOpen(false);
     try {
       const { handle, name, content } = await openProjectFile();
-      await canvas.loadFromJSON(content);
-      canvas.renderAll();
+      await useEditorStore.getState().loadDocument(content);
       useEditorStore.getState().initHistory();
       setFileHandle(handle);
       setProjectName(name);
@@ -115,7 +117,7 @@ const Topbar: React.FC = () => {
   const handleSaveProject = async () => {
     if (!canvas) return;
     setFileMenuOpen(false);
-    const data = canvas.toObject(EXTRA_PROPS);
+    const data = useEditorStore.getState().serializeDocument();
     if (fileHandle) {
       await saveProjectFile(fileHandle, data, projectName);
     } else {
@@ -127,7 +129,7 @@ const Topbar: React.FC = () => {
     if (!canvas) return;
     setFileMenuOpen(false);
     try {
-      const data = canvas.toObject(EXTRA_PROPS);
+      const data = useEditorStore.getState().serializeDocument();
       const { handle, name } = await saveAsProjectFile(data, projectName || 'design');
       setFileHandle(handle);
       setProjectName(name);
@@ -294,6 +296,15 @@ const Topbar: React.FC = () => {
                 active={snapEnabled}
                 onClick={() => {
                   toggleSnap();
+                  setViewMenuOpen(false);
+                }}
+              />
+              <ToggleMenuItem
+                icon={<Frame size={14} />}
+                label="Margin guides"
+                active={showMargins}
+                onClick={() => {
+                  toggleMargins();
                   setViewMenuOpen(false);
                 }}
               />
