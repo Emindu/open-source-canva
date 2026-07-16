@@ -141,7 +141,7 @@ const ProjectsPanel: React.FC = () => {
                   borderRadius: '50%',
                   backgroundColor: 'rgba(255,255,255,0.9)',
                   border: 'none',
-                  color: 'var(--error)',
+                  color: 'var(--danger)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',

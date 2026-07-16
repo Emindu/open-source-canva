@@ -203,13 +203,17 @@ const ToolsPalette: React.FC = () => {
   );
 
   return (
+    <>
     <div
       ref={paletteRef}
       style={{
         position: 'absolute',
-        top: 20,
+        // The palette has no positioned ancestor, so it anchors to the page:
+        // offset below the topbar and stay under its z-index so the palette
+        // never covers the File/View menus.
+        top: 'calc(var(--topbar-height) + 16px)',
         left: 'calc(var(--rail-width) + 20px)',
-        zIndex: 100,
+        zIndex: 10,
         display: 'flex',
         gap: 12,
         alignItems: 'flex-start',
@@ -461,10 +465,14 @@ const ToolsPalette: React.FC = () => {
         </div>
       )}
 
-      {showSignatureModal && (
-        <SignatureModal onClose={() => setShowSignatureModal(false)} onInsert={handleSignatureInsert} />
-      )}
     </div>
+
+    {/* Fixed-position modal must live outside the palette's z-index:10
+        stacking context, or the topbar (z-index:20) would paint over it. */}
+    {showSignatureModal && (
+      <SignatureModal onClose={() => setShowSignatureModal(false)} onInsert={handleSignatureInsert} />
+    )}
+    </>
   );
 };
 

@@ -247,10 +247,16 @@ const applyBrushToCanvas = (
       break;
     case 'eraser':
       brush.width = drawingWidth * 2;
-      // Any color works — destination-out ignores the color, using only alpha.
-      brush.color = 'rgba(0,0,0,1)';
+      // Live preview must read as removal, not painting: stroke in the canvas
+      // background color, which is exactly what the finished erase reveals.
+      // (destination-out itself only uses the alpha, applied on path:created.)
+      brush.color =
+        typeof canvas.backgroundColor === 'string' && canvas.backgroundColor
+          ? canvas.backgroundColor
+          : '#ffffff';
       break;
   }
+  canvas.freeDrawingCursor = brushType === 'eraser' ? 'cell' : 'crosshair';
   canvas.freeDrawingBrush = brush;
 };
 
@@ -1112,6 +1118,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       if (!(canvas as any).__eraserHookAttached) {
         canvas.on('path:created', (e: any) => {
           if (useEditorStore.getState().brushType === 'eraser' && e?.path) {
+            // Normalize to full alpha: destination-out erases by the stroke's
+            // alpha, and the preview color (canvas background) may carry one.
+            e.path.set('stroke', 'rgb(0,0,0)');
             e.path.set('globalCompositeOperation', 'destination-out');
             e.path.set('selectable', false);
             e.path.set('evented', false);
