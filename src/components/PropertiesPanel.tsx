@@ -250,8 +250,8 @@ const FillPicker: React.FC<{
     // 'pattern' handled separately by pattern buttons
   };
 
-  const solidHex = /^#[0-9a-fA-F]{6}$/.test(colorA) ? colorA : '#efa63c';
-  const bHex = /^#[0-9a-fA-F]{6}$/.test(colorB) ? colorB : '#e5533c';
+  const solidHex = /^#[0-9a-fA-F]{6}$/.test(colorA) ? colorA : '#3b82f6';
+  const bHex = /^#[0-9a-fA-F]{6}$/.test(colorB) ? colorB : '#2563eb';
 
   const modes: { id: FillMode; label: string }[] = [
     { id: 'solid', label: 'Solid' },
@@ -1589,7 +1589,7 @@ const PropertiesPanel: React.FC = () => {
       {/* Image: Colorize (BlendColor) */}
       {isImage && !cropModeActive && (() => {
         const state = readFilterState(activeObject);
-        const blendHex = /^#[0-9a-fA-F]{6}$/.test(state.blendColor || '') ? state.blendColor! : '#efa63c';
+        const blendHex = /^#[0-9a-fA-F]{6}$/.test(state.blendColor || '') ? state.blendColor! : '#3b82f6';
         return (
           <div className="panel-section">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>

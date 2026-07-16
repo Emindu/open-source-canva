@@ -10,7 +10,7 @@ interface Props {
   fallback?: string; // used when value isn't a valid #hex
 }
 
-const ColorField: React.FC<Props> = ({ value, onChange, showRecent = true, fallback = '#efa63c' }) => {
+const ColorField: React.FC<Props> = ({ value, onChange, showRecent = true, fallback = '#3b82f6' }) => {
   const recent = useEditorStore((s) => s.recentColors);
   const pushRecentColor = useEditorStore((s) => s.pushRecentColor);
   const supported = eyedropperSupported();

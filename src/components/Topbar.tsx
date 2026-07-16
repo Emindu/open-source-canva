@@ -174,34 +174,30 @@ const Topbar: React.FC = () => {
             style={{
               width: 26,
               height: 26,
-              borderRadius: 'var(--radius-sm)',
+              borderRadius: 8,
               backgroundColor: 'var(--accent)',
               color: 'var(--accent-contrast)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontFamily: 'var(--font-display)',
-              fontSize: 16,
-              fontWeight: 600,
+              fontSize: 14,
+              fontWeight: 700,
               lineHeight: 1,
-              paddingTop: 2,
-            }}
-          >
-            Cw
-          </div>
-          <span
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: 19,
-              fontWeight: 600,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              lineHeight: 1,
-              paddingTop: 2,
               userSelect: 'none',
             }}
           >
-            Canva<span style={{ color: 'var(--accent)' }}>Wasm</span>
+            C
+          </div>
+          <span
+            style={{
+              fontSize: 14,
+              fontWeight: 600,
+              letterSpacing: '-0.01em',
+              lineHeight: 1,
+              userSelect: 'none',
+            }}
+          >
+            CanvaWasm
           </span>
         </div>
 
@@ -407,9 +403,8 @@ const MenuItem: React.FC<{
         <span style={{ whiteSpace: 'nowrap' }}>{label}</span>
         {hint && (
           <span
-            className="mono"
             style={{
-              fontSize: 10,
+              fontSize: 11,
               color: 'var(--text-tertiary)',
               marginLeft: 16,
               alignSelf: 'center',
