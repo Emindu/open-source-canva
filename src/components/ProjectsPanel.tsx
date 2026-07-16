@@ -27,8 +27,8 @@ const ProjectsPanel: React.FC = () => {
       if (proj && proj.data) {
         useEditorStore.getState().setProjectId(proj.id);
         useEditorStore.getState().setProjectName(proj.name);
-        await canvas.loadFromJSON(proj.data);
-        canvas.renderAll();
+        // Handles both multi-page documents and legacy single-page JSON.
+        await useEditorStore.getState().loadDocument(proj.data);
         useEditorStore.getState().initHistory();
         localStorage.setItem('canvawasm.lastProjectId', proj.id);
       }

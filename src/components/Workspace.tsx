@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as fabric from 'fabric';
-import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize2, ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react';
 import { isHistoryRestoring, useEditorStore } from '../store/useEditorStore';
 import { attachSnapping } from '../utils/snapping';
 import Rulers from './Rulers';
@@ -9,6 +9,7 @@ import ContextMenu from './ContextMenu';
 const MIN_ZOOM = 0.2;
 const MAX_ZOOM = 4;
 const AUTOSAVE_DEBOUNCE = 600;
+const MARGIN_PX = 40; // print-safe margin guide inset
 
 const Workspace: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -18,6 +19,12 @@ const Workspace: React.FC = () => {
   const canvasSize = useEditorStore((s) => s.canvasSize);
   const showRulers = useEditorStore((s) => s.showRulers);
   const showGrid = useEditorStore((s) => s.showGrid);
+  const showMargins = useEditorStore((s) => s.showMargins);
+  const pages = useEditorStore((s) => s.pages);
+  const currentPage = useEditorStore((s) => s.currentPage);
+  const goToPage = useEditorStore((s) => s.goToPage);
+  const addPage = useEditorStore((s) => s.addPage);
+  const deletePage = useEditorStore((s) => s.deletePage);
   const [zoom, setZoom] = useState(1);
 
   useEffect(() => {
@@ -74,8 +81,8 @@ const Workspace: React.FC = () => {
           if (proj && proj.data) {
             useEditorStore.getState().setProjectId(proj.id);
             useEditorStore.getState().setProjectName(proj.name);
-            await initCanvas.loadFromJSON(proj.data);
-            initCanvas.renderAll();
+            // Handles both multi-page documents and legacy single-page JSON.
+            await useEditorStore.getState().loadDocument(proj.data);
           }
         } catch (e) {
           console.warn('Restore failed', e);
@@ -174,6 +181,28 @@ const Workspace: React.FC = () => {
           initCanvas.requestRenderAll();
           return clamped;
         });
+      }
+    });
+
+    // ---- Bullet list continuation: Enter on a "• " line starts a new bullet ----
+    // Insert into the hidden textarea (not the Fabric object): while editing,
+    // Fabric syncs its text FROM the textarea on every keystroke, so edits
+    // made only on the object would be overwritten by the next key press.
+    initCanvas.on('text:changed', (opt: any) => {
+      const t = opt.target;
+      if (!t || !t.isEditing || typeof t.text !== 'string') return;
+      const ta: HTMLTextAreaElement | undefined = t.hiddenTextarea;
+      if (!ta) return;
+      const pos = ta.selectionStart;
+      if (!pos || ta.value[pos - 1] !== '\n') return;
+      const before = ta.value.slice(0, pos - 1);
+      const prevLine = before.slice(before.lastIndexOf('\n') + 1);
+      if (/^•\s/.test(prevLine) && prevLine.trim() !== '•') {
+        ta.value = ta.value.slice(0, pos) + '• ' + ta.value.slice(pos);
+        ta.selectionStart = ta.selectionEnd = pos + 2;
+        t.updateFromTextArea?.();
+        t.initDimensions?.();
+        initCanvas.requestRenderAll();
       }
     });
 
@@ -321,6 +350,19 @@ const Workspace: React.FC = () => {
             showGrid={showGrid}
           />
         </div>
+        {showMargins && (
+          <div
+            style={{
+              position: 'absolute',
+              left: MARGIN_PX * zoom,
+              top: MARGIN_PX * zoom,
+              width: (canvasSize.width - MARGIN_PX * 2) * zoom,
+              height: (canvasSize.height - MARGIN_PX * 2) * zoom,
+              border: '1px dashed var(--accent-strong)',
+              pointerEvents: 'none',
+            }}
+          />
+        )}
       </div>
 
       <div
@@ -357,6 +399,64 @@ const Workspace: React.FC = () => {
         <div style={{ width: 1, height: 20, backgroundColor: 'var(--border)', margin: '0 2px' }} />
         <button className="icon-btn" onClick={() => applyZoom(1)} aria-label="Reset zoom">
           <Maximize2 size={16} />
+        </button>
+      </div>
+
+      {/* Page navigator */}
+      <div
+        className="glass-card"
+        style={{
+          position: 'absolute',
+          bottom: 16,
+          left: 208,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
+          padding: 4,
+          borderRadius: 20,
+          zIndex: 15,
+        }}
+      >
+        <button
+          className="icon-btn"
+          onClick={() => goToPage(currentPage - 1)}
+          disabled={currentPage === 0}
+          aria-label="Previous page"
+        >
+          <ChevronLeft size={16} />
+        </button>
+        <div
+          style={{
+            minWidth: 44,
+            textAlign: 'center',
+            fontSize: 12,
+            fontVariantNumeric: 'tabular-nums',
+            color: 'var(--text-secondary)',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {currentPage + 1} / {pages.length}
+        </div>
+        <button
+          className="icon-btn"
+          onClick={() => goToPage(currentPage + 1)}
+          disabled={currentPage >= pages.length - 1}
+          aria-label="Next page"
+        >
+          <ChevronRight size={16} />
+        </button>
+        <div style={{ width: 1, height: 20, backgroundColor: 'var(--border)', margin: '0 2px' }} />
+        <button className="icon-btn" onClick={() => addPage()} aria-label="Add page" title="Add page">
+          <Plus size={16} />
+        </button>
+        <button
+          className="icon-btn"
+          onClick={() => deletePage()}
+          disabled={pages.length <= 1}
+          aria-label="Delete page"
+          title="Delete page"
+        >
+          <Trash2 size={15} />
         </button>
       </div>
 
