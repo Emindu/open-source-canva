@@ -6,7 +6,7 @@ interface SignatureModalProps {
   onInsert: (dataUrl: string) => void;
 }
 
-const COLORS = ['#111827', '#1f2937', '#0f172a', '#7c5cff', '#ef4444', '#0ea5e9'];
+const COLORS = ['#111827', '#1f2937', '#0f172a', '#925f00', '#ef4444', '#0ea5e9'];
 
 const SignatureModal: React.FC<SignatureModalProps> = ({ onClose, onInsert }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);

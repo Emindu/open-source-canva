@@ -16,8 +16,8 @@ import type { BrandKit, BrandLogo } from '../utils/brandKit';
 import { EXTRA_PROPS } from '../utils/projectSerialization';
 import { SHAPE_LIB } from '../utils/shapeLibrary';
 
-const CORNER_COLOR = '#7c5cff';
-const CORNER_STROKE = '#ffffff';
+const CORNER_COLOR = '#efa63c';
+const CORNER_STROKE = '#191504';
 const MAX_HISTORY = 50;
 
 export type AlignDir = 'left' | 'center-h' | 'right' | 'top' | 'center-v' | 'bottom';
@@ -384,7 +384,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const rect = new fabric.Rect({
       left: 120,
       top: 120,
-      fill: '#7c5cff',
+      fill: '#efa63c',
       width: 160,
       height: 120,
       rx: 8,
@@ -419,7 +419,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const rect = new fabric.Rect({
       left: 120,
       top: 120,
-      fill: '#7c5cff',
+      fill: '#efa63c',
       width: 160,
       height: 120,
       rx: 28,
@@ -555,7 +555,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (!canvas) return;
     const path =
       'M20,0 L140,0 Q160,0 160,20 L160,80 Q160,100 140,100 L60,100 L40,130 L48,100 L20,100 Q0,100 0,80 L0,20 Q0,0 20,0 Z';
-    const p = new fabric.Path(path, { left: 200, top: 150, fill: '#7c5cff' });
+    const p = new fabric.Path(path, { left: 200, top: 150, fill: '#efa63c' });
     applyCornerStyle(p);
     canvas.add(p);
     canvas.setActiveObject(p);
@@ -573,7 +573,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       { x: 60, y: 60 },
       { x: 0, y: 60 },
     ];
-    const p = new fabric.Polygon(pts, { left: 200, top: 200, fill: '#7c5cff' });
+    const p = new fabric.Polygon(pts, { left: 200, top: 200, fill: '#efa63c' });
     applyCornerStyle(p);
     canvas.add(p);
     canvas.setActiveObject(p);
@@ -585,7 +585,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const line = new fabric.Line([0, 0, 220, 0], {
       left: 200,
       top: 240,
-      stroke: '#7c5cff',
+      stroke: '#efa63c',
       strokeWidth: 4,
       strokeLineCap: 'round',
     });
@@ -1381,7 +1381,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     });
 
     const isHex = (v: unknown): v is string => typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v);
-    const currentFill = isHex(target.fill) ? target.fill : isHex(target.origFill) ? target.origFill : '#7c5cff';
+    const currentFill = isHex(target.fill) ? target.fill : isHex(target.origFill) ? target.origFill : '#efa63c';
 
     // Presets that overwrite the fill (neon/outline/hollow) remember the
     // original solid color so 'none' can restore it instead of leaving the

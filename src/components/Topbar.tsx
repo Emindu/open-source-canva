@@ -4,7 +4,6 @@ import {
   Redo2,
   Share2,
   Download,
-  Sparkles,
   FileImage,
   FileJson,
   ChevronDown,
@@ -170,21 +169,43 @@ const Topbar: React.FC = () => {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, minWidth: 200 }}>
-        <div
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: 8,
-            background: 'linear-gradient(135deg, #7c5cff 0%, #4f46e5 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'white',
-          }}
-        >
-          <Sparkles size={16} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div
+            style={{
+              width: 26,
+              height: 26,
+              borderRadius: 'var(--radius-sm)',
+              backgroundColor: 'var(--accent)',
+              color: 'var(--accent-contrast)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontFamily: 'var(--font-display)',
+              fontSize: 16,
+              fontWeight: 600,
+              lineHeight: 1,
+              paddingTop: 2,
+            }}
+          >
+            Cw
+          </div>
+          <span
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 19,
+              fontWeight: 600,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              lineHeight: 1,
+              paddingTop: 2,
+              userSelect: 'none',
+            }}
+          >
+            Canva<span style={{ color: 'var(--accent)' }}>Wasm</span>
+          </span>
         </div>
-        
+
+
         {/* File Menu */}
         <div ref={fileMenuRef} style={{ position: 'relative' }}>
           <button 
@@ -383,8 +404,21 @@ const MenuItem: React.FC<{
     <span style={{ color: 'var(--text-secondary)' }}>{icon}</span>
     <span style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
       <span style={{ fontWeight: 500, display: 'flex', justifyContent: 'space-between' }}>
-        <span>{label}</span>
-        {hint && <span style={{ fontSize: 11, color: 'var(--text-tertiary)', marginLeft: 16 }}>{hint}</span>}
+        <span style={{ whiteSpace: 'nowrap' }}>{label}</span>
+        {hint && (
+          <span
+            className="mono"
+            style={{
+              fontSize: 10,
+              color: 'var(--text-tertiary)',
+              marginLeft: 16,
+              alignSelf: 'center',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {hint}
+          </span>
+        )}
       </span>
     </span>
   </button>
